@@ -23,6 +23,7 @@ a{color:#FCD419}a:hover{color:#FFE36B}
 .lh-hero{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:32px}
 .lh-hero-text{display:flex;flex-direction:column;align-items:flex-start;gap:22px;min-width:0}
 .lh-hero-events{display:flex;flex-direction:column;gap:40px;min-width:0}
+@media (min-width:984px){.lh-steps-col{padding-top:42px}}
 .lh-tree-stage{position:relative;width:clamp(320px,32vw,480px);aspect-ratio:1142/1378;perspective:1000px;touch-action:pan-y}
 .lh-near-snow{position:absolute;left:-14%;right:-14%;top:-6%;bottom:4%;overflow:hidden;pointer-events:none;--lh-fall:700px}
 .lh-tree-glow{position:absolute;left:-18%;right:-18%;top:0;bottom:4%;border-radius:50%;background:radial-gradient(circle at 50% 50%,rgba(190,150,255,.42),transparent 65%)}

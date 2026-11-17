@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin · Lil' Hoppers Christmas Carnival</title>
+<link rel="icon" href="assets/img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+<header class="ad-top">
+<div class="ad-top-in">
+<img src="assets/img/logo.png" alt="Lil' Hoppers" class="ad-logo">
+<div class="ad-title"><strong>Christmas Carnival</strong><span>Bookings admin</span></div>
+<div class="ad-top-actions" id="topActions" hidden>
+<button type="button" class="ad-btn ad-btn-light" id="refresh">Refresh</button>
+<button type="button" class="ad-btn ad-btn-ghost" id="logout">Log out</button>
+</div>
+</div>
+</header>
+
+<main class="ad-main">
+<p class="ad-demo" id="demoBanner" hidden>Demo mode: this page shows bookings made in this browser's demo. The passcode is <strong>demo</strong>.</p>
+
+<form class="ad-login" id="login" autocomplete="off">
+<h1>Admin sign in</h1>
+<label for="passcode">Passcode</label>
+<input id="passcode" type="password" required autocomplete="current-password">
+<button type="submit" class="ad-btn">Sign in</button>
+<p class="ad-error" id="loginError" role="alert" hidden></p>
+<p class="ad-help">The passcode is in the Apps Script project under Project Settings → Script properties → ADMIN_PASSCODE.</p>
+</form>
+
+<div id="dash" hidden>
+<section aria-labelledby="slotsTitle">
+<div class="ad-section-head">
+<h2 id="slotsTitle">Slots</h2>
+<p class="ad-totals" id="totals"></p>
+</div>
+<div class="ad-slots" id="slots"></div>
+</section>
+
+<section aria-labelledby="bookTitle">
+<div class="ad-section-head">
+<h2 id="bookTitle">Bookings</h2>
+<div class="ad-filters">
+<label>Status <select id="fStatus">
+<option value="active">Pending + Verified</option>
+<option value="Pending Verification">Pending Verification</option>
+<option value="Verified">Verified</option>
+<option value="Awaiting Payment">Awaiting Payment (on hold)</option>
+<option value="Rejected">Rejected</option>
+<option value="Abandoned">Abandoned</option>
+<option value="all">All</option>
+</select></label>
+<label>Slot <select id="fSlot"><option value="all">All slots</option></select></label>
+<label class="ad-search">Search <input id="fSearch" type="search" placeholder="Name, email, phone, ID, UTR"></label>
+</div>
+</div>
+<p class="ad-count" id="count"></p>
+<div class="ad-table-wrap" tabindex="0" aria-label="Bookings table">
+<table class="ad-table">
+<thead><tr>
+<th scope="col">Booking</th><th scope="col">Slot</th><th scope="col">Parent</th><th scope="col">Children</th>
+<th scope="col">Payment breakdown</th><th scope="col">Expected</th><th scope="col">Verified</th><th scope="col">Proof</th><th scope="col">Status</th><th scope="col"><span class="ad-sr">Actions</span></th>
+</tr></thead>
+<tbody id="rows"></tbody>
+</table>
+</div>
+</section>
+</div>
+</main>
+
+<dialog class="ad-dialog" id="verifyDlg">
+<form method="dialog" id="verifyForm">
+<h2>Verify payment</h2>
+<p id="verifyWho"></p>
+<dl class="ad-break" id="verifyBreak"></dl>
+<label for="verifyAmount">Amount actually received (₹)</label>
+<input id="verifyAmount" type="number" min="0" step="1" required inputmode="numeric">
+<p class="ad-warn" id="verifyWarn" hidden></p>
+<label for="verifyNote">Note (optional)</label>
+<input id="verifyNote" maxlength="200" placeholder="e.g. Matched in GPay at 4:12 PM">
+<p class="ad-help">This marks the booking Verified and emails the confirmation to the parent.</p>
+<p class="ad-error" id="verifyError" role="alert" hidden></p>
+<div class="ad-dialog-actions"><button type="button" class="ad-btn ad-btn-ghost" value="cancel" id="verifyCancel">Cancel</button><button type="submit" class="ad-btn" id="verifyGo">Verify and send confirmation</button></div>
+</form>
+</dialog>
+
+<dialog class="ad-dialog" id="rejectDlg">
+<form method="dialog" id="rejectForm">
+<h2>Reject booking</h2>
+<p id="rejectWho"></p>
+<label for="rejectReason">Reason</label>
+<textarea id="rejectReason" rows="3" required maxlength="300" placeholder="e.g. No payment found for this UTR"></textarea>
+<p class="ad-help">No email is sent. The places go back on sale straight away.</p>
+<p class="ad-error" id="rejectError" role="alert" hidden></p>
+<div class="ad-dialog-actions"><button type="button" class="ad-btn ad-btn-ghost" id="rejectCancel">Cancel</button><button type="submit" class="ad-btn ad-btn-danger" id="rejectGo">Reject booking</button></div>
+</form>
+</dialog>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/pricing.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

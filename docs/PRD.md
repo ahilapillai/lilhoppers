@@ -14,7 +14,7 @@ This version adds the final slot, add-on, payment and admin requirements to the 
 | Date | Saturday, 19 December 2026 |
 | Venue | Vata Vriksha, Indiranagar — [Google Maps](https://share.google/GE3sdUk4LarPOcGPW) |
 | Activities | Art station, cookie decoration, meet & greet Santa, photobooth, tattoo station (temporary), magic show, and more |
-| Contact | hello.lilhoppers@gmail.com · [PHONE NUMBER — to be supplied] |
+| Contact | hello.lilhoppers@gmail.com · Call or WhatsApp +91 96864 53295 · Instagram [@lil.hoppers](https://instagram.com/lil.hoppers) |
 
 ## 2. Users
 
@@ -70,13 +70,13 @@ Price checks (must always hold):
 
 Dark purple-to-black background with very slow falling snow and twinkling fairy lights. Sections:
 
-- **Hero:** text on the left, a 3D Christmas tree in the centre that turns only with the visitor's hand (mouse, finger drag, or tilting an Android phone), and the six activities on the right.
+- **Hero:** "Christmas Carnival for kids", the date and venue on the left (no intro paragraph), a 3D Christmas tree in the centre that turns only with the visitor's hand (mouse, finger drag, or tilting an Android phone), and the activities on the right (titles and pictures only, no descriptions).
 - **The party:** centred description.
 - **What's inside:** the activities on a fairy-light arc.
-- **Tickets and how booking works.**
-- **Footer.**
+- **Tickets and how booking works.** The When box shows the date and "From 2:00 PM onwards, 3 slots".
+- **Footer:** "Call or WhatsApp +91 96864 53295" (tap to call) and an Instagram button linking to instagram.com/lil.hoppers.
 
-Price and time copy is updated to ₹899 per ticket and the three slots. Every "Book tickets" button opens the booking flow.
+Price and time copy is updated to ₹899 per ticket and the three slots. Every "Book tickets" button opens the booking flow (header, hero and tickets section).
 
 ### 5.2 Booking flow
 
@@ -162,8 +162,7 @@ The admin page is protected by a passcode stored on the server. It shows:
 
 ## 11. Open items
 
-1. Footer phone number (still a placeholder).
-2. Confirm the 20-minute payment hold (section 3, rule 8).
-3. Personal UPI IDs can hit app limits or warnings when a payment link includes the amount. Do one real test payment from GPay, PhonePe and Paytm before launch, and consider a merchant UPI ID.
-4. Refund policy wording for rejected or duplicate payments.
-5. Parental consent for the photos of children used on the site.
+1. Confirm the 20-minute payment hold (section 3, rule 8).
+2. Personal UPI IDs can hit app limits or warnings when a payment link includes the amount. Do one real test payment from GPay, PhonePe and Paytm before launch, and consider a merchant UPI ID.
+3. Refund policy wording for rejected or duplicate payments.
+4. Parental consent for the photos of children used on the site.

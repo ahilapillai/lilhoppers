@@ -211,6 +211,35 @@ test('submitting proof: saves details, screenshot to Drive, sets Pending, sends 
   assert.match(env.mails[0].htmlBody, /₹2,097/);
 });
 
+test('screenshot check result is saved to the sheet and shown to admin; a failed check is refused', () => {
+  const env = load();
+  const shot = { name: 'pay.png', mimeType: 'image/png', data: Buffer.from('fake-png').toString('base64') };
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 1 });
+  const bad = env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { utr: '' }), screenshot: shot,
+    screenshotCheck: { status: 'fail', shows: '16 Nov 2026, 8:53 AM', summary: 'This screenshot is from 16 Nov 2026, 8:53 AM, not today.' } });
+  assert.equal(bad.code, 'SCREENSHOT_MISMATCH');
+  assert.equal(bookingRow(env, hold.bookingId)['Status'], 'Awaiting Payment');
+  assert.equal(env.files.length, 0);
+
+  const ok = env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { utr: '' }), screenshot: shot,
+    screenshotCheck: { status: 'pass', shows: '17 Nov 2026, 1:42 PM', summary: 'Paid to AHILA PICHAIPILLAI · paid today 1:42 PM (3 min before upload) · amount ₹1,198 seen' } });
+  assert.equal(ok.ok, true);
+  const row = bookingRow(env, hold.bookingId);
+  assert.equal(row['Screenshot Check'], 'Passed');
+  assert.equal(row['Screenshot Shows'], '17 Nov 2026, 1:42 PM');
+  assert.match(row['Screenshot Check Note'], /3 min before upload/);
+  const listed = env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE }).bookings.find((b) => b.bookingId === hold.bookingId);
+  assert.equal(listed.screenshotCheck, 'Passed');
+  assert.equal(listed.screenshotShows, '17 Nov 2026, 1:42 PM');
+
+  const hold2 = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold2.bookingId, ...details(1, { utr: '' }), screenshot: shot });
+  assert.equal(bookingRow(env, hold2.bookingId)['Screenshot Check'], 'Not checked');
+  const hold3 = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold3.bookingId, ...details(1) });
+  assert.equal(bookingRow(env, hold3.bookingId)['Screenshot Check'], '');
+});
+
 test('proof is required: UTR or screenshot', () => {
   const env = load();
   const hold = env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 1 });

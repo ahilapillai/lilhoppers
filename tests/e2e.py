@@ -2,9 +2,12 @@
 Needs: pip install playwright opencv-python-headless && a Chrome/Chromium."""
 import http.server, socketserver, threading, os, sys, re, functools
 import cv2, numpy as np
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from playwright.sync_api import sync_playwright, expect
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SAMPLE = os.path.join(ROOT, 'tests', 'fixtures', 'gpay-16-nov-2026.png')  # a copy of the GPay screenshot Ahila shared (16 Nov 2026, 8:53am)
 OUT = os.environ.get('E2E_SHOTS', '/tmp/lh-shots')
 os.makedirs(OUT, exist_ok=True)
 
@@ -12,7 +15,8 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
 handler = functools.partial(Quiet, directory=ROOT)
 socketserver.TCPServer.allow_reuse_address = True
-httpd = socketserver.TCPServer(('127.0.0.1', 0), handler)
+httpd = socketserver.ThreadingTCPServer(('127.0.0.1', 0), handler)
+httpd.daemon_threads = True
 PORT = httpd.server_address[1]
 threading.Thread(target=httpd.serve_forever, daemon=True).start()
 BASE = f'http://127.0.0.1:{PORT}'
@@ -109,6 +113,8 @@ with sync_playwright() as p:
     check('transaction ID or upload' in page.inner_text('#detailsError'), 'book: proof (UTR or screenshot) required')
     page.set_input_files('#shot', files=[{'name': 'pay.png', 'mimeType': 'image/png', 'buffer': cv2.imencode('.png', np.full((40, 40, 3), 200, np.uint8))[1].tobytes()}])
     page.wait_for_selector('#shotPreview:not([hidden])')
+    page.wait_for_selector('#shotCheck[data-state=unreadable]', timeout=90000)
+    check("couldn't read" in page.inner_text('#shotCheck').lower(), 'book: a screenshot with no text is "couldn\'t read", and can still be sent')
     page.fill('#utr', '412345678901')
     page.screenshot(path=f'{OUT}/book-details.png', full_page=True)
     page.click('#submitDetails')
@@ -124,6 +130,73 @@ with sync_playwright() as p:
     mob.wait_for_selector('.bk-slot'); mob.screenshot(path=f'{OUT}/book-mobile.png', full_page=True)
     check(mob.evaluate('document.documentElement.scrollWidth') <= 391, 'book mobile: no sideways scrolling')
     mob.close()
+
+    # ---------- payment screenshot check (real OCR in the browser) ----------
+    IST = ZoneInfo('Asia/Kolkata')
+    now = datetime.now(IST)
+    def receipt(payee, when, amount='₹1,198', dark=False):
+        bg, fg, sub = ('#111318', '#F1F1F1', '#B5B5B5') if dark else ('#FFFFFF', '#1F1F1F', '#5F6368')
+        stamp = when.strftime('%-d %B %Y, %-I:%M') + when.strftime('%p').lower()
+        html = f'''<body style="margin:0;background:{bg};font-family:Roboto,Arial,sans-serif;color:{fg}">
+        <div style="width:420px;padding:40px 24px;text-align:center">
+        <div style="text-align:left;font-size:14px;color:{sub}">{now.strftime('%-I:%M')}</div>
+        <div style="margin-top:60px;font-size:44px">{amount}</div>
+        <div style="margin-top:30px;font-size:18px;color:{sub}">Paid to</div>
+        <div style="margin-top:6px;font-size:28px">{payee}</div>
+        <div style="margin-top:12px;font-size:16px">Banking name: {payee}</div>
+        <div style="margin-top:14px;font-size:17px;color:{sub}">{stamp}</div>
+        <div style="margin-top:40px;font-size:15px;color:{sub}">UPI transaction ID<br>412345678901</div></div></body>'''
+        pg = browser.new_page(viewport={'width': 420, 'height': 640}, device_scale_factor=2)
+        pg.set_content(html); png = pg.screenshot(); pg.close()
+        return png
+    fresh = receipt('AHILA PICHAIPILLAI', now - timedelta(minutes=3))
+    old_dark = receipt('AHILA PICHAIPILLAI', now - timedelta(minutes=40), dark=True)
+    stranger = receipt('RAVI KUMAR', now - timedelta(minutes=2))
+    for name, png in [('fresh', fresh), ('old-dark', old_dark), ('stranger', stranger)]:
+        open(f'{OUT}/receipt-{name}.png', 'wb').write(png)
+
+    sc = browser.new_context(viewport={'width': 1280, 'height': 900}, timezone_id='Asia/Kolkata')
+    pg = sc.new_page()
+    errors = []
+    pg.on('pageerror', lambda e: errors.append(str(e)))
+    pg.goto(BASE + '/book.html'); pg.wait_for_selector('.bk-slot')
+    check(pg.locator('.lh-flake').count() == 0, 'book: no snowflakes on the booking pages')
+    pg.click('.bk-slot >> nth=2'); pg.click('#toPay'); pg.wait_for_selector('#step-pay:not([hidden])')
+    box = pg.locator('.bk-upi-row').bounding_box(); cp = pg.locator('#copyUpi').bounding_box(); code = pg.locator('#upiId').bounding_box()
+    check(abs((cp['y'] + cp['height'] / 2) - (code['y'] + code['height'] / 2)) < 4 and cp['x'] > code['x'] + code['width'] - 2, 'book: Copy button sits to the right of the UPI ID')
+    pg.locator('.bk-pay').screenshot(path=f'{OUT}/book-pay-card.png')
+    pg.click('#paid'); pg.wait_for_selector('#step-details:not([hidden])')
+    pg.fill('#parentName', 'Priya Nair'); pg.fill('#email', 'priya@example.com'); pg.fill('#phone', '9876543210'); pg.fill('#child0', 'Ira')
+    def upload(name, data):
+        if pg.locator('#shotPreview:not([hidden])').count(): pg.click('#shotRemove')
+        pg.set_input_files('#shot', files=[{'name': name, 'mimeType': 'image/png', 'buffer': data}])
+        pg.wait_for_selector('#shotCheck:not([data-state=checking])', timeout=90000)
+        return pg.get_attribute('#shotCheck', 'data-state'), pg.inner_text('#shotCheck')
+    st, msg = upload('gpay-16-nov.png', open(SAMPLE, 'rb').read())
+    check(st == 'fail' and '16 Nov 2026, 8:53 AM' in msg and 'not today' in msg, "check: the 16 Nov GPay screenshot is rejected (%s: %s)" % (st, msg[:90]))
+    pg.locator('#shotPreview').screenshot(path=f'{OUT}/check-fail-old-date.png')
+    pg.click('#submitDetails')
+    check("doesn't look like the payment you just made" in pg.inner_text('#detailsError'), 'check: a rejected screenshot blocks "Get my ticket"')
+    st, msg = upload('old-dark.png', old_dark)
+    check(st == 'fail' and 'minutes ago' in msg, 'check: dark-mode screenshot from 40 min ago is rejected (%s: %s)' % (st, msg[:90]))
+    st, msg = upload('stranger.png', stranger)
+    check(st == 'fail' and "can't see AHILA PICHAIPILLAI" in msg, 'check: payment to someone else is rejected (%s: %s)' % (st, msg[:90]))
+    st, msg = upload('fresh.png', fresh)
+    check(st == 'pass' and 'paid to AHILA PICHAIPILLAI today at' in msg, 'check: fresh screenshot to Ahila passes (%s: %s)' % (st, msg[:90]))
+    pg.locator('#shotPreview').screenshot(path=f'{OUT}/check-pass.png')
+    pg.locator('.bk-proof').screenshot(path=f'{OUT}/check-proof-section.png')
+    pg.click('#submitDetails'); pg.wait_for_selector('#step-done:not([hidden])')
+    check('Screenshot uploaded' in pg.inner_text('#step-done'), 'check: booking goes through with a passing screenshot')
+    check(not errors, 'check: no script errors ' + str(errors[:2]))
+    ad2 = sc.new_page(); ad2.goto(BASE + '/admin.html'); ad2.fill('#passcode', 'demo'); ad2.click('#login button'); ad2.wait_for_selector('#dash:not([hidden])')
+    r0 = ad2.locator('#rows tr >> nth=0').inner_text()
+    check('Priya Nair' in r0 and 'Screenshot OK' in r0 and 'amount ₹1,198 seen' in r0, 'admin: shows the screenshot check result (%s)' % r0.replace('\n', ' | ')[-160:])
+    ad2.click('#rows button[data-act=shot]')
+    check(ad2.locator('#shotView').evaluate('i => i.complete && i.naturalWidth > 100'), 'admin: screenshot opens in a viewer')
+    ad2.screenshot(path=f'{OUT}/admin-shot-viewer.png')
+    ad2.click('#shotClose')
+    ad2.locator('.ad-table-wrap').screenshot(path=f'{OUT}/admin-table.png')
+    ad2.close(); sc.close()
 
     # ---------- admin ----------
     adm = ctx.new_page()

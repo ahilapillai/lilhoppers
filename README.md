@@ -4,7 +4,7 @@ Booking site for the Lil' Hoppers Christmas Carnival (Sat 19 Dec 2026, Vata Vrik
 
 - **`index.html`**: the landing page, with the 3D tree that turns with the visitor's hand, snow and fairy lights.
 - **`book.html`**: the booking flow. Parents pick a slot and add-ons, pay by UPI QR, share proof of payment and get a ticket.
-- **`admin.html`**: the admin page. Shows slot counts and capacity, and every booking with its itemized payment. Admins verify or reject payments here.
+- **`admin.html`**: the admin page (`https://ahilapillai.github.io/lilhoppers/admin.html`). Shows slot counts and capacity, and every booking with the parent's details, itemized payment, screenshot and screenshot check. Admins verify or reject payments here.
 - **`apps-script/`**: the backend, a Google Apps Script web app. It stores bookings in Google Sheets, saves screenshots to Google Drive, and sends email from hello.lilhoppers@gmail.com.
 - **`docs/PRD.md`**: the product requirements.
 
@@ -38,6 +38,7 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 - **Places are counted per child.** Pending Verification and Verified bookings count toward capacity, and so does a 20-minute hold while a parent is paying. Abandoned and Rejected bookings never count.
 - **No overbooking.** Every capacity check and save happens inside a single Apps Script lock, so simultaneous bookings can't take the same last place.
 - **No numbers shown to parents.** The public site only ever learns whether a slot is sold out.
+- **Payment screenshots are checked on upload.** The booking page reads the screenshot and only accepts it if it shows AHILA PICHAIPILLAI (or the UPI ID), today's date and a time within 15 minutes of now. Unreadable screenshots are accepted but flagged "Couldn't read" for the admin. Change the names or the window in `assets/js/config.js` (`PAYEE_NAMES`, `SCREENSHOT_TOLERANCE_MINUTES`). See `docs/PRD.md` section 5.2.
 - **Payment status stays Pending** until an admin verifies it.
   - On submission the parent automatically gets the "payment being checked" email.
   - When an admin verifies the payment, the parent gets the confirmation email.
@@ -47,6 +48,6 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 ## Tests
 
 ```bash
-node --test tests/*.test.js  # backend logic: pricing, capacity, holds, emails, admin
-python3 tests/e2e.py         # browser tests of all three pages in demo mode (needs Playwright + Chrome)
+node --test tests/*.test.js  # backend logic (pricing, capacity, holds, emails, admin) and the screenshot reader rules
+python3 tests/e2e.py         # browser tests of all three pages in demo mode, including real OCR on sample screenshots (needs Playwright + Chrome)
 ```

@@ -10,5 +10,8 @@ window.LH_CONFIG = {
   EVENT_DATE: 'Sat, 19 Dec 2026',
   VENUE: 'Vata Vriksha, Indiranagar',
   MAPS_URL: 'https://share.google/GE3sdUk4LarPOcGPW',
-  CONTACT_EMAIL: 'hello.lilhoppers@gmail.com'
+  CONTACT_EMAIL: 'hello.lilhoppers@gmail.com',
+  // Payment screenshots must show one of these names (or the UPI ID), today's date, and a time within this many minutes of upload.
+  PAYEE_NAMES: ['AHILA PICHAIPILLAI'],
+  SCREENSHOT_TOLERANCE_MINUTES: 15
 };

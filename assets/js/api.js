@@ -23,7 +23,25 @@
     try { var d = JSON.parse(localStorage.getItem(KEY)); if (d && d.slots) return d; } catch (e) {}
     return { slots: JSON.parse(JSON.stringify(SLOTS)), bookings: [] };
   }
-  function save(db) { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {} }
+  function save(db) {
+    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {
+      // Browser storage is small: keep the screenshots of the newest 3 bookings only.
+      var withShots = db.bookings.filter(function (b) { return /^data:/.test(b.screenshotUrl); });
+      withShots.slice(0, -3).forEach(function (b) { b.screenshotUrl = '#demo-screenshot-removed'; });
+      try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e2) {}
+    }
+  }
+  var CHECK_LABEL = { pass: 'Passed', unreadable: "Couldn't read", fail: 'Failed' };
+  /* Same rules as checkFromPayload_() in Code.gs. */
+  function checkFields(p) {
+    if (!(p.screenshot && p.screenshot.data)) return { screenshotCheck: '', screenshotShows: '', screenshotCheckNote: '' };
+    var c = p.screenshotCheck || {};
+    return {
+      screenshotCheck: CHECK_LABEL[c.status] || 'Not checked',
+      screenshotShows: String(c.shows || '').slice(0, 60),
+      screenshotCheckNote: String(c.summary || '').slice(0, 300)
+    };
+  }
   function live(b, now) { return b.status === 'Awaiting Payment' && new Date(b.holdExpiresAt).getTime() > now; }
   function usage(db, now) {
     var u = {};
@@ -74,9 +92,11 @@
       var s = find(db, p.bookingId);
       if (!s) return { ok: false, code: 'NOT_FOUND', error: 'We could not find this booking. Please start again.' };
       if (!p.utr && !(p.screenshot && p.screenshot.data)) return { ok: false, code: 'NO_PROOF', error: 'Add your UPI transaction ID or upload the payment screenshot.' };
+      if (p.screenshot && p.screenshot.data && p.screenshotCheck && p.screenshotCheck.status === 'fail') return { ok: false, code: 'SCREENSHOT_MISMATCH', error: "This screenshot doesn't look like the payment you just made. Upload the right one, or remove it and type the UPI transaction ID." };
       if (s.status === 'Awaiting Payment' || s.status === 'Abandoned') {
         s.parentName = p.parentName; s.email = p.email; s.phone = String(p.phone).replace(/\D/g, '').slice(-10);
-        s.childNames = (p.childNames || []).join(', '); s.utr = p.utr || ''; s.screenshotUrl = p.screenshot ? '#demo-screenshot' : '';
+        s.childNames = (p.childNames || []).join(', '); s.utr = p.utr || ''; s.screenshotUrl = p.screenshot ? 'data:' + p.screenshot.mimeType + ';base64,' + p.screenshot.data : '';
+        Object.assign(s, checkFields(p));
         s.status = 'Pending Verification'; s.paymentStatus = 'Pending'; s.submittedAt = new Date(now).toISOString();
       }
       out = { ok: true, bookingId: s.bookingId, status: s.status, paymentStatus: s.paymentStatus, slot: { id: s.slotId, time: s.slotTime },

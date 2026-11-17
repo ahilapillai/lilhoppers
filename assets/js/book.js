@@ -266,7 +266,7 @@
         var c = document.createElement('canvas');
         c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        resolve({ name: file.name, mimeType: 'image/jpeg', data: c.toDataURL('image/jpeg', 0.85).split(',')[1], previewUrl: url });
+        resolve({ name: file.name, mimeType: 'image/jpeg', data: c.toDataURL('image/jpeg', 0.85).split(',')[1], previewUrl: url, img: img });
       };
       img.onerror = function () {
         if (file.size > 5 * 1024 * 1024) return reject('That image is too large. Please use one under 5 MB.');
@@ -279,6 +279,34 @@
     });
   }
 
+  /* Screenshot check: payee name, today's date, and a time close to now. */
+  var checkSeq = 0;
+  function showCheck(check) {
+    var box = $('shotCheck');
+    box.dataset.state = check.status;
+    $('shotCheckText').textContent = check.message;
+    $('shotPreview').classList.toggle('is-fail', check.status === 'fail');
+  }
+  function checkShot(shot) {
+    var seq = ++checkSeq;
+    shot.check = { status: 'checking', message: 'Checking the name, date and time on your screenshot…' };
+    showCheck(shot.check);
+    var opts = {
+      payeeNames: cfg.PAYEE_NAMES || [], upiId: cfg.UPI_ID, toleranceMinutes: cfg.SCREENSHOT_TOLERANCE_MINUTES || 15,
+      expectedAmount: state.hold && state.hold.amounts.total
+    };
+    var job = shot.img ? LH_SHOTCHECK.read(shot.img, opts) : Promise.resolve({
+      status: 'unreadable', shows: '', minutesOff: null, problems: ['NOT_AN_IMAGE'], checkedAt: new Date().toISOString(),
+      message: "We couldn't check this file automatically. You can still continue and we'll check it by hand.", summary: 'Not checked (file could not be read)'
+    });
+    job.then(function (res) {
+      if (seq !== checkSeq || state.shot !== shot) return;
+      shot.check = res;
+      showCheck(res);
+    });
+  }
+  ['pointerdown', 'focusin'].forEach(function (ev) { $('uploadBox').addEventListener(ev, function () { LH_SHOTCHECK.warmUp(); }, { once: true }); });
+
   $('shot').addEventListener('change', function (e) {
     var file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -289,14 +317,18 @@
       $('shotPreview').hidden = false;
       $('uploadBox').hidden = true;
       showError($('detailsError'), '');
+      checkShot(shot);
     }, function (msg) { showError($('detailsError'), msg); });
     e.target.value = '';
   });
-  $('shotRemove').addEventListener('click', function () {
+  function clearShot() {
+    checkSeq++;
     state.shot = null;
     $('shotPreview').hidden = true;
+    $('shotPreview').classList.remove('is-fail');
     $('uploadBox').hidden = false;
-  });
+  }
+  $('shotRemove').addEventListener('click', clearShot);
 
   function validate() {
     var name = $('parentName').value.trim();
@@ -312,6 +344,11 @@
     for (var i = 0; i < kids.length; i++) if (!kids[i]) return bad('child' + i, kids.length === 1 ? "Add your child's name." : "Add each child's name.");
     if (utr && utr.length < 12) return bad('utr', 'The UPI transaction ID should be at least 12 characters.');
     if (!utr && !state.shot) return bad('utr', 'Add your UPI transaction ID or upload the payment screenshot.');
+    if (state.shot && state.shot.check && state.shot.check.status === 'checking') return "Hold on, we're still checking your screenshot.";
+    if (state.shot && state.shot.check && state.shot.check.status === 'fail') {
+      $('shotRemove').focus();
+      return "This screenshot doesn't look like the payment you just made. Upload the right one, or remove it and type the UPI transaction ID.";
+    }
     return { parentName: name, email: email, phone: phone, childNames: kids, utr: utr };
   }
 
@@ -325,7 +362,11 @@
     btn.firstChild.textContent = 'Sending… ';
     showError(err, '');
     var payload = Object.assign({ bookingId: state.hold.bookingId }, v);
-    if (state.shot) payload.screenshot = { name: state.shot.name, mimeType: state.shot.mimeType, data: state.shot.data };
+    if (state.shot) {
+      payload.screenshot = { name: state.shot.name, mimeType: state.shot.mimeType, data: state.shot.data };
+      var c = state.shot.check || {};
+      payload.screenshotCheck = { status: c.status, shows: c.shows || '', summary: c.summary || '', minutesOff: c.minutesOff, checkedAt: c.checkedAt };
+    }
     API.call('submitBooking', payload).then(function (res) {
       btn.disabled = false;
       btn.firstChild.textContent = 'Get my ticket';
@@ -360,7 +401,7 @@
     state.hold = null; state.result = null; state.shot = null; state.slotId = null;
     state.children = 1; state.extraParent = false; state.giftOn = true; state.giftQty = 1; state.giftTouched = false;
     $('detailsForm').reset();
-    $('shotPreview').hidden = true; $('uploadBox').hidden = false;
+    clearShot();
     go('choose');
     loadAvailability();
   });

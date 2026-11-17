@@ -15,7 +15,6 @@
 </head>
 <body class="bk-body">
 <div class="bk-page">
-<div class="lh-snow" aria-hidden="true"><template data-list="snowA" data-as="f"><i class="{{f.cls}}" style="left: {{f.left}}; width: {{f.size}}; height: {{f.size}}; opacity: {{f.op}}; animation-duration: {{f.dur}}; animation-delay: {{f.delay}}"></i></template></div>
 <div aria-hidden="true" class="bk-garland">
 <svg viewBox="0 0 1440 64" preserveAspectRatio="none"><path d="M0 6 Q120 86 240 6 Q360 86 480 6 Q600 86 720 6 Q840 86 960 6 Q1080 86 1200 6 Q1320 86 1440 6" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="2" vector-effect="non-scaling-stroke"></path></svg>
 <template data-list="bulbs" data-as="b"><span class="lh-bulb" style="left: {{b.left}}; top: {{b.top}}; color: {{b.color}}; animation-duration: {{b.dur}}; animation-delay: {{b.delay}}"></span></template>
@@ -110,7 +109,7 @@
 <p class="bk-pay-amount">Pay exactly <strong data-fill="total"></strong></p>
 <div class="bk-upi">
 <span class="bk-upi-label">Or pay to this UPI ID</span>
-<div class="bk-upi-row"><code id="upiId"></code><button type="button" class="bk-chip" id="copyUpi">Copy</button></div>
+<div class="bk-upi-row"><code id="upiId"></code><button type="button" class="bk-copy" id="copyUpi" aria-label="Copy UPI ID">Copy</button></div>
 </div>
 <a class="bk-btn bk-btn-ghost" id="upiLink" href="#">Open a UPI app on this phone</a>
 <p class="bk-note">Pay the exact amount so we can match your payment to your booking.</p>
@@ -160,9 +159,12 @@
 <label class="bk-upload" id="uploadBox">
 <input type="file" id="shot" accept="image/*">
 <span class="bk-upload-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path></svg></span>
-<span><strong>Upload payment screenshot</strong><small>PNG or JPG from your UPI app</small></span>
+<span><strong>Upload payment screenshot</strong><small>The payment screen from your UPI app, showing the date and time</small></span>
 </label>
-<div class="bk-shot" id="shotPreview" hidden><img id="shotImg" alt="Payment screenshot preview"><span id="shotName"></span><button type="button" class="bk-chip" id="shotRemove">Remove</button></div>
+<div class="bk-shot-box" id="shotPreview" hidden>
+<div class="bk-shot"><img id="shotImg" alt="Payment screenshot preview"><span id="shotName"></span><button type="button" class="bk-chip" id="shotRemove">Remove</button></div>
+<p class="bk-check" id="shotCheck" role="status" aria-live="polite"><span class="bk-check-icon" aria-hidden="true"></span><span id="shotCheckText"></span></p>
+</div>
 </div>
 <p class="bk-error" id="detailsError" role="alert" hidden></p>
 <button type="submit" class="bk-btn" id="submitDetails">Get my ticket<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
@@ -210,6 +212,7 @@
 <script src="assets/js/api.js"></script>
 <script src="assets/vendor/qrcode.js"></script>
 <script src="assets/js/festive.js"></script>
+<script src="assets/js/shotcheck.js"></script>
 <script src="assets/js/book.js"></script>
 </body>
 </html>

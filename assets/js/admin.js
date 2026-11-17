@@ -121,6 +121,21 @@
     });
   }
 
+  function checkBadge(b) {
+    if (!b.screenshotUrl) return '';
+    var map = { 'Passed': ['ad-c-pass', '✓ Screenshot OK'], "Couldn't read": ['ad-c-unread', "? Couldn't read"], 'Failed': ['ad-c-fail', '✗ Didn\'t match'] };
+    var m = map[b.screenshotCheck] || ['ad-c-none', 'Not checked'];
+    return '<span class="ad-check ' + m[0] + '">' + m[1] + '</span>' +
+      (b.screenshotShows ? '<small>Shows: ' + esc(b.screenshotShows) + '</small>' : '') +
+      (b.screenshotCheckNote ? '<small>' + esc(b.screenshotCheckNote) + '</small>' : '');
+  }
+  function shotLink(b, i) {
+    if (!b.screenshotUrl) return '';
+    if (/^data:image\//.test(b.screenshotUrl)) return '<button type="button" class="ad-linkbtn" data-act="shot" data-i="' + i + '">View screenshot</button>';
+    if (/^https?:/.test(b.screenshotUrl)) return '<a href="' + esc(b.screenshotUrl) + '" target="_blank" rel="noopener">View screenshot</a>';
+    return '<small>Screenshot (not kept in demo)</small>';
+  }
+
   function breakdown(b) {
     var rows = '<dt>Tickets ' + b.children + ' × ' + P.rupees(data.prices.CHILD_TICKET) + '</dt><dd>' + money(b.ticketSubtotal) + '</dd>' +
       '<dt>Extra parent</dt><dd>' + (b.extraParent === 'Yes' ? money(b.extraParentCharge) : '—') + '</dd>' +
@@ -138,8 +153,7 @@
       var slot = data.slots.filter(function (s) { return s.id === b.slotId; })[0];
       var verified = b.verifiedAmount !== '' && b.verifiedAmount !== null && b.verifiedAmount !== undefined;
       var mismatch = verified && Number(b.verifiedAmount) !== Number(b.expectedTotal);
-      var proof = (b.utr ? '<span class="ad-id">' + esc(b.utr) + '</span>' : '') +
-        (b.screenshotUrl ? '<a href="' + esc(b.screenshotUrl) + '" target="_blank" rel="noopener">Screenshot</a>' : '') ||
+      var proof = (b.utr ? '<span class="ad-id">' + esc(b.utr) + '</span>' : '') + shotLink(b, i) + checkBadge(b) ||
         '<small>—</small>';
       var actions = '';
       if (b.status === 'Pending Verification') actions = '<button class="ad-btn ad-btn-sm" data-act="verify" data-i="' + i + '">Verify</button>';
@@ -161,15 +175,28 @@
     body.querySelectorAll('button[data-act]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var b = list[Number(btn.dataset.i)];
-        if (btn.dataset.act === 'verify') openVerify(b); else openReject(b);
+        if (btn.dataset.act === 'verify') openVerify(b);
+        else if (btn.dataset.act === 'shot') openShot(b);
+        else openReject(b);
       });
     });
   }
+
+  /* ---------------- screenshot viewer (demo bookings keep the image in this browser) ---------------- */
+  function openShot(b) {
+    $('shotWho').textContent = b.bookingId + ' · ' + (b.parentName || '') + ' · expected ' + money(b.expectedTotal);
+    $('shotView').src = b.screenshotUrl;
+    $('shotInfo').innerHTML = checkBadge(b);
+    $('shotDlg').showModal();
+  }
+  $('shotClose').addEventListener('click', function () { $('shotDlg').close(); });
 
   /* ---------------- verify ---------------- */
   function openVerify(b) {
     current = b;
     $('verifyWho').textContent = b.bookingId + ' · ' + b.parentName + ' · ' + (b.utr ? 'UTR ' + b.utr : 'screenshot');
+    $('verifyCheck').innerHTML = checkBadge(b);
+    $('verifyCheck').hidden = !b.screenshotUrl;
     $('verifyBreak').innerHTML = breakdown(b).replace(/^<dl class="ad-break">|<\/dl>$/g, '') +
       '<dt><strong>Total expected</strong></dt><dd><strong>' + money(b.expectedTotal) + '</strong></dd>';
     $('verifyAmount').value = b.expectedTotal;

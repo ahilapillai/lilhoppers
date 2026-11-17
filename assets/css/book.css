@@ -103,8 +103,11 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-pay-amount strong{font-family:'Fredoka',ui-rounded,sans-serif;font-size:26px;font-weight:600;color:#FCD419}
 .bk-upi{display:flex;flex-direction:column;gap:6px}
 .bk-upi-label{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#BFB3D9}
-.bk-upi-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.bk-upi-row code{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.16);padding:10px 12px;border-radius:10px;word-break:break-all}
+.bk-upi-row{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:4px 4px 4px 14px}
+.bk-upi-row code{flex:1 1 auto;min-width:0;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:16px;overflow-wrap:anywhere}
+.bk-copy{flex:0 0 auto;min-height:40px;padding:0 16px;border-radius:9px;border:0;background:rgba(255,255,255,.14);color:#FFF8EC;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.bk-copy:hover{background:rgba(255,255,255,.22)}
+.bk-copy:focus-visible{outline:3px solid #FCD419;outline-offset:2px}
 
 /* ticket */
 .bk-ticket{max-width:660px;margin:0 auto;filter:drop-shadow(0 18px 36px rgba(0,0,0,.35));display:block}
@@ -154,3 +157,22 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-total-dark{border-top-color:#E2D9EF}
 .bk-done-actions{max-width:660px;margin:28px auto 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:14px}
 @media (max-width:520px){.bk-card{padding:18px;border-radius:18px}.bk-ticket-top,.bk-ticket-body{padding-left:18px;padding-right:18px}}
+
+/* payment screenshot check */
+.bk-shot-box{display:flex;flex-direction:column;gap:8px}
+.bk-check{display:flex;align-items:flex-start;gap:10px;margin:0;padding:12px 14px;border-radius:12px;font-size:15px;line-height:1.45;font-weight:700}
+.bk-check-icon{flex:0 0 20px;height:20px;margin-top:1px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900}
+.bk-check[data-state="checking"]{background:#F3EEFB;color:#4E2F92}
+.bk-check[data-state="checking"] .bk-check-icon{border:2.5px solid #C9B8EA;border-top-color:#6A47A8;animation:bk-spin .8s linear infinite;box-sizing:border-box}
+.bk-check[data-state="pass"]{background:#E7F6EC;color:#1D6B3A}
+.bk-check[data-state="pass"] .bk-check-icon{background:#2E9B57}
+.bk-check[data-state="pass"] .bk-check-icon::before{content:"✓"}
+.bk-check[data-state="fail"]{background:#FDEEEC;color:#9F2A1E}
+.bk-check[data-state="fail"] .bk-check-icon{background:#D2483A}
+.bk-check[data-state="fail"] .bk-check-icon::before{content:"!"}
+.bk-check[data-state="unreadable"]{background:#FFF6DA;color:#7A5A00}
+.bk-check[data-state="unreadable"] .bk-check-icon{background:#E0A800}
+.bk-check[data-state="unreadable"] .bk-check-icon::before{content:"?"}
+.bk-shot-box.is-fail .bk-shot{border-color:#E7A49B}
+@keyframes bk-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.bk-check[data-state="checking"] .bk-check-icon{animation:none}}

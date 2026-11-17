@@ -19,7 +19,11 @@ var CONFIG = {
   MAX_CHILDREN: 10,
   MAX_SCREENSHOT_BYTES: 5 * 1024 * 1024,
   PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299 },
-  SCREENSHOT_FOLDER: 'Lil Hoppers – Payment screenshots'
+  SCREENSHOT_FOLDER: 'Lil Hoppers – Payment screenshots',
+  // The booking page reads each payment screenshot and only accepts it if it shows one of these names
+  // (or the UPI ID), today's date and a time within this many minutes of upload. See assets/js/shotcheck.js.
+  PAYEE_NAMES: ['AHILA PICHAIPILLAI'],
+  SCREENSHOT_TOLERANCE_MINUTES: 15
 };
 
 var DEFAULT_SLOTS = [
@@ -41,7 +45,7 @@ var PAYMENT = { NOT_PAID: 'Not paid', PENDING: 'Pending', VERIFIED: 'Verified', 
 var BOOKING_HEADERS = [
   'Booking ID', 'Created At', 'Slot ID', 'Slot Time', 'Children', 'Child Names', 'Parent Name', 'Email', 'Phone',
   'Extra Parent', 'Extra Parent Charge', 'Ticket Subtotal', 'Santa Gift Qty', 'Santa Gift Subtotal', 'Expected Total',
-  'UPI Transaction ID', 'Screenshot URL', 'Status', 'Payment Status', 'Verified Amount', 'Verified At',
+  'UPI Transaction ID', 'Screenshot URL', 'Screenshot Check', 'Screenshot Shows', 'Screenshot Check Note', 'Status', 'Payment Status', 'Verified Amount', 'Verified At',
   'Hold Expires At', 'Submitted At', 'Pending Email Sent At', 'Confirmation Email Sent At', 'Rejection Reason', 'Admin Notes'
 ];
 
@@ -123,7 +127,22 @@ function validateDetails(p, children) {
   if (utr && (utr.length < 12 || utr.length > 35)) return { ok: false, code: 'BAD_UTR', error: 'The UPI transaction ID should be at least 12 characters.' };
   if (!utr && !hasShot) return { ok: false, code: 'NO_PROOF', error: 'Add your UPI transaction ID or upload the payment screenshot.' };
   if (hasShot && !/^image\/(png|jpe?g|webp|heic|heif)$/i.test(String(p.screenshot.mimeType || ''))) return { ok: false, code: 'BAD_SCREENSHOT', error: 'The screenshot must be an image (PNG, JPG or WebP).' };
+  if (hasShot && p.screenshotCheck && p.screenshotCheck.status === 'fail') {
+    return { ok: false, code: 'SCREENSHOT_MISMATCH', error: "This screenshot doesn't look like the payment you just made. Upload the right one, or remove it and type the UPI transaction ID." };
+  }
   return { ok: true, value: { parentName: name, email: email, phone: phone, childNames: names, utr: utr, hasShot: hasShot } };
+}
+
+/** The booking page's screenshot check, as saved to the sheet. */
+function checkFromPayload_(p, hasShot) {
+  if (!hasShot) return { 'Screenshot Check': '', 'Screenshot Shows': '', 'Screenshot Check Note': '' };
+  var c = p.screenshotCheck || {};
+  var label = { pass: 'Passed', unreadable: "Couldn't read", fail: 'Failed' }[c.status] || 'Not checked';
+  return {
+    'Screenshot Check': label,
+    'Screenshot Shows': String(c.shows || '').slice(0, 60),
+    'Screenshot Check Note': String(c.summary || '').slice(0, 300)
+  };
 }
 
 function upiUri(total, bookingId) {
@@ -269,6 +288,8 @@ function apiSubmitBooking(p) {
       'Child Names': det.childNames.join(', '), 'Parent Name': det.parentName, 'Email': det.email, 'Phone': det.phone,
       'UPI Transaction ID': det.utr, 'Screenshot URL': screenshotUrl, 'Submitted At': new Date(now)
     };
+    var check = checkFromPayload_(p, det.hasShot);
+    Object.keys(check).forEach(function (k) { details[k] = check[k]; });
 
     // Hold expired or abandoned: only keep the booking if the places are still free.
     if (!(b.status === STATUS.AWAITING && holdIsLive(b, now))) {
@@ -414,7 +435,8 @@ var KEY_BY_HEADER = {
   'Child Names': 'childNames', 'Parent Name': 'parentName', 'Email': 'email', 'Phone': 'phone', 'Extra Parent': 'extraParent',
   'Extra Parent Charge': 'extraParentCharge', 'Ticket Subtotal': 'ticketSubtotal', 'Santa Gift Qty': 'giftQty',
   'Santa Gift Subtotal': 'giftSubtotal', 'Expected Total': 'expectedTotal', 'UPI Transaction ID': 'utr',
-  'Screenshot URL': 'screenshotUrl', 'Status': 'status', 'Payment Status': 'paymentStatus', 'Verified Amount': 'verifiedAmount',
+  'Screenshot URL': 'screenshotUrl', 'Screenshot Check': 'screenshotCheck', 'Screenshot Shows': 'screenshotShows',
+  'Screenshot Check Note': 'screenshotCheckNote', 'Status': 'status', 'Payment Status': 'paymentStatus', 'Verified Amount': 'verifiedAmount',
   'Verified At': 'verifiedAt', 'Hold Expires At': 'holdExpiresAt', 'Submitted At': 'submittedAt',
   'Pending Email Sent At': 'pendingEmailSentAt', 'Confirmation Email Sent At': 'confirmationEmailSentAt',
   'Rejection Reason': 'rejectionReason', 'Admin Notes': 'adminNotes'
@@ -622,6 +644,13 @@ function setup() {
     bookings.appendRow(BOOKING_HEADERS);
     bookings.setFrozenRows(1);
     bookings.getRange(1, 1, 1, BOOKING_HEADERS.length).setFontWeight('bold').setBackground('#F1ECFA');
+  } else {
+    // Sheet made by an older version: add any new columns at the end.
+    var have = bookings.getRange(1, 1, 1, bookings.getLastColumn()).getValues()[0];
+    BOOKING_HEADERS.filter(function (h) { return have.indexOf(h) < 0; }).forEach(function (h) {
+      var col = bookings.getLastColumn() + 1;
+      bookings.getRange(1, col).setValue(h).setFontWeight('bold').setBackground('#F1ECFA');
+    });
   }
   var slots = ss.getSheetByName('Slots') || ss.insertSheet('Slots');
   if (slots.getLastRow() === 0) {

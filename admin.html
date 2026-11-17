@@ -24,7 +24,7 @@
 </header>
 
 <main class="ad-main">
-<p class="ad-demo" id="demoBanner" hidden>Demo mode: this page shows bookings made in this browser's demo. The passcode is <strong>demo</strong>.</p>
+<p class="ad-demo" id="demoBanner" hidden>Demo mode: this page only shows test bookings made in this same browser. The passcode is <strong>demo</strong>. Real bookings will show here once the Google Sheet backend is connected.</p>
 
 <form class="ad-login" id="login" autocomplete="off">
 <h1>Admin sign in</h1>
@@ -79,6 +79,7 @@
 <form method="dialog" id="verifyForm">
 <h2>Verify payment</h2>
 <p id="verifyWho"></p>
+<div class="ad-check-box" id="verifyCheck" hidden></div>
 <dl class="ad-break" id="verifyBreak"></dl>
 <label for="verifyAmount">Amount actually received (₹)</label>
 <input id="verifyAmount" type="number" min="0" step="1" required inputmode="numeric">
@@ -101,6 +102,16 @@
 <p class="ad-error" id="rejectError" role="alert" hidden></p>
 <div class="ad-dialog-actions"><button type="button" class="ad-btn ad-btn-ghost" id="rejectCancel">Cancel</button><button type="submit" class="ad-btn ad-btn-danger" id="rejectGo">Reject booking</button></div>
 </form>
+</dialog>
+
+<dialog class="ad-dialog ad-dialog-wide" id="shotDlg">
+<div class="ad-dialog-in">
+<h2>Payment screenshot</h2>
+<p id="shotWho"></p>
+<div class="ad-check-box" id="shotInfo"></div>
+<img id="shotView" alt="Payment screenshot" class="ad-shot">
+<div class="ad-dialog-actions"><button type="button" class="ad-btn" id="shotClose">Close</button></div>
+</div>
 </dialog>
 
 <script src="assets/js/config.js"></script>

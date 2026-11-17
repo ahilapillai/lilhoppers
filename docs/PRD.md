@@ -83,10 +83,23 @@ Price and time copy is updated to ₹899 per ticket and the three slots. Every "
 1. **Choose:** pick a slot (sold-out slots disabled), the number of children, and add-ons. An itemized order summary updates live.
 2. **Pay:** the itemized order summary is shown again, then:
    - A **UPI QR code** generated from the final total and the UPI ID `ahilapil.26-1@okicici`.
-   - The UPI ID with a copy button, an "Open UPI app" button for paying on the same phone, a "pay the exact amount" note, and a countdown for the 20-minute hold.
+   - The UPI ID with a Copy button on its right, an "Open UPI app" button for paying on the same phone, a "pay the exact amount" note, and a countdown for the 20-minute hold.
    - A **Payment done** button.
    - The QR uses `upi://pay?pa=ahilapil.26-1@okicici&pn=Lil Hoppers&am=<total>.00&cu=INR&tn=<booking ID>`, so the booking ID appears in the payment note.
 3. **Details (ticket):** parent's name, email, phone (10-digit Indian mobile), each child's name, and proof of payment: the UPI transaction ID (12-digit UTR) **or** a screenshot. At least one is required.
+   - **Screenshot check.** As soon as a screenshot is chosen, the page reads its text and checks that it shows:
+     1. the payee **AHILA PICHAIPILLAI** (or the UPI ID `ahilapil.26-1@okicici`), allowing for a couple of misread letters;
+     2. **today's date**;
+     3. a payment time within **15 minutes** of now (before or after).
+
+     | Result | What the parent sees | Can they continue? |
+     |---|---|---|
+     | Passed | "Checked: paid to AHILA PICHAIPILLAI today at 1:42 PM." | Yes |
+     | Failed: wrong date, time more than 15 minutes off, or a different payee | What the screenshot shows (for example "from 16 Nov 2026, 8:53 AM, not today") and a request to upload the right screenshot or type the UPI transaction ID instead | No, not with that screenshot |
+     | Couldn't read (blurry, cropped, or the reader didn't load) | "We couldn't read the date and time… we'll check it by hand" | Yes, flagged for the admin |
+
+     Dates are read in common app formats (16 November 2026, 16 Nov, Nov 16 2026, 16/11/2026, Today), and times as 8:53am, 08:53 PM or 13:44:10. The phone's status-bar clock is ignored. The amount is also looked for and reported to the admin, but doesn't block the booking.
+     The check runs in the parent's browser (Tesseract OCR, about 7 MB downloaded the first time someone uploads a screenshot), so it stops honest mistakes and reused old screenshots. A determined person could still fake one, so the admin still confirms the money arrived before verifying. The payee names and the 15-minute window are set in `assets/js/config.js`.
 4. **Ticket:** the booking ID, the status "Payment being checked", the slot, the names and the itemized amount. It says the confirmation email will follow once the payment is verified.
 
 The in-progress booking survives a page reload during payment.
@@ -126,14 +139,14 @@ The admin page is protected by a passcode stored on the server. It shows:
   - **Total expected**
   - **Actual verified amount**
 
-  Each booking also shows the parent, contact details, children's names, UTR, a screenshot link (Google Drive), statuses and timestamps. Bookings can be filtered by status and slot, and searched.
+  Each booking also shows the parent, contact details, children's names, UTR, a screenshot link (Google Drive), the **screenshot check** result (Screenshot OK / Couldn't read / Not checked, what date and time it shows, minutes before upload, and whether the amount was seen), statuses and timestamps. Bookings can be filtered by status and slot, and searched.
 - **Actions:**
   - **Verify:** the admin enters the amount actually received (defaults to the expected amount, and warns if they differ). This sets the booking to Verified and sends the confirmation email.
   - **Reject:** requires a reason.
 
 ## 9. Data and integrations
 
-- **Google Sheets is the system of record.** Every booking and payment detail is written to the "Bookings" sheet as it happens, and capacities live in the "Slots" sheet. Columns: Booking ID, Created At, Slot ID, Slot Time, Children, Child Names, Parent Name, Email, Phone, Extra Parent, Extra Parent Charge, Ticket Subtotal, Santa Gift Qty, Santa Gift Subtotal, Expected Total, UPI Transaction ID, Screenshot URL, Status, Payment Status, Verified Amount, Verified At, Hold Expires At, Submitted At, Pending Email Sent At, Confirmation Email Sent At, Rejection Reason, Admin Notes.
+- **Google Sheets is the system of record.** Every booking and payment detail is written to the "Bookings" sheet as it happens, and capacities live in the "Slots" sheet. Columns: Booking ID, Created At, Slot ID, Slot Time, Children, Child Names, Parent Name, Email, Phone, Extra Parent, Extra Parent Charge, Ticket Subtotal, Santa Gift Qty, Santa Gift Subtotal, Expected Total, UPI Transaction ID, Screenshot URL, Screenshot Check, Screenshot Shows, Screenshot Check Note, Status, Payment Status, Verified Amount, Verified At, Hold Expires At, Submitted At, Pending Email Sent At, Confirmation Email Sent At, Rejection Reason, Admin Notes.
 - **Google Drive:** screenshots are saved to the "Lil Hoppers – Payment screenshots" folder, named with the booking ID, and linked from the booking row. They stay private to the hello.lilhoppers account.
 - **Backend:** a Google Apps Script web app bound to the sheet, deployed as hello.lilhoppers@gmail.com. A timer job marks expired holds as Abandoned every 10 minutes. Capacity checks also do this on the spot.
 - **Hosting:** the public site and admin page are static files on GitHub Pages.
@@ -142,6 +155,7 @@ The admin page is protected by a passcode stored on the server. It shows:
 
 - No counts or capacity in any public response from the server. The public API only returns sold-out flags.
 - Mobile first. Touch targets are at least 44 px, and forms work with UPI apps on the same phone.
+- Falling snow appears on the home page only, not in the booking flow.
 - Visitors whose devices ask for reduced motion get no falling snow and still lights.
 - If 3D isn't available, the tree falls back to an image.
 - Screenshots up to 5 MB (images only). They are compressed in the browser before upload.

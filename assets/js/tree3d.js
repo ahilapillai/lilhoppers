@@ -1,11 +1,13 @@
-/* 3D Christmas tree (three.js). Turns only with the visitor's hand: set ctrl._mx / ctrl._my in -1..1. */
+/* 3D Christmas tree (three.js), modelled on the Lil' Hoppers tree art: soft clay-like tiers, gold star,
+   gold and red bead garlands, baubles, presents on a round rug. Turns only with the visitor's hand:
+   set ctrl._mx / ctrl._my in -1..1. */
 (function () {
   function build3d(T) {
     const canvas = this._canvas;
     if (T.ColorManagement) T.ColorManagement.legacyMode = false;
     const renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
     this._renderer = renderer;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.setClearColor(0x000000, 0);
     renderer.shadowMap.enabled = true;
@@ -13,31 +15,52 @@
 
     const C = (hex) => new T.Color(hex);
     const scene = new T.Scene();
-    const camera = new T.PerspectiveCamera(28, 1142 / 1378, 0.1, 100);
-    camera.position.set(0, 3.1, 15.2);
-    camera.lookAt(0, 2.45, 0);
+    const camera = new T.PerspectiveCamera(27, 1142 / 1378, 0.1, 100);
+    camera.position.set(0, 3.1, 15.6);
+    camera.lookAt(0, 3.05, 0);
 
-    scene.add(new T.HemisphereLight(0xfff3e0, 0x4a2e80, 0.85));
-    scene.add(new T.AmbientLight(0xffffff, 0.12));
-    const key = new T.DirectionalLight(0xffe7c2, 1.25);
-    key.position.set(-5, 9, 7);
+    /* Soft studio environment so gold and baubles get real highlights. */
+    const pmrem = new T.PMREMGenerator(renderer);
+    const envScene = new T.Scene();
+    const sky = new T.SphereGeometry(10, 32, 16);
+    const skyCol = [];
+    const sp = sky.attributes.position;
+    for (let i = 0; i < sp.count; i++) {
+      const y = sp.getY(i) / 10;
+      const c = y > 0 ? new T.Color(0.62, 0.6, 0.66).lerp(new T.Color(1.0, 0.96, 0.9), y) : new T.Color(0.62, 0.6, 0.66).lerp(new T.Color(0.18, 0.14, 0.26), -y);
+      skyCol.push(c.r, c.g, c.b);
+    }
+    sky.setAttribute('color', new T.Float32BufferAttribute(skyCol, 3));
+    envScene.add(new T.Mesh(sky, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide })));
+    const softbox = (x, y, z, w, h, k) => {
+      const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color(k, k, k * 0.95), side: T.DoubleSide }));
+      m.position.set(x, y, z);
+      m.lookAt(0, 0, 0);
+      envScene.add(m);
+    };
+    softbox(-5, 6, 6, 5, 3, 3.2);
+    softbox(6, 3, 4, 3, 4, 1.6);
+    softbox(0, 2, -8, 6, 3, 1.2);
+    scene.environment = pmrem.fromScene(envScene, 0.035).texture;
+    pmrem.dispose();
+
+    scene.add(new T.HemisphereLight(0xfff6e8, 0x3b2a5c, 0.35));
+    const key = new T.DirectionalLight(0xfff1dc, 1.05);
+    key.position.set(-4.5, 9, 8);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
-    key.shadow.camera.left = -4.5;
-    key.shadow.camera.right = 4.5;
-    key.shadow.camera.top = 6.5;
-    key.shadow.camera.bottom = -2;
+    key.shadow.camera.left = -4.2;
+    key.shadow.camera.right = 4.2;
+    key.shadow.camera.top = 7;
+    key.shadow.camera.bottom = -2.5;
     key.shadow.camera.near = 1;
     key.shadow.camera.far = 30;
     key.shadow.bias = -0.0006;
-    key.shadow.normalBias = 0.02;
+    key.shadow.normalBias = 0.025;
     scene.add(key);
-    const rim = new T.DirectionalLight(0xc9a8ff, 0.85);
-    rim.position.set(5, 4, -6);
+    const rim = new T.DirectionalLight(0xd9c2ff, 0.55);
+    rim.position.set(5, 5, -6);
     scene.add(rim);
-    const starLight = new T.PointLight(0xffd27a, 0.9, 7);
-    starLight.position.set(0, 5.3, 0.8);
-    scene.add(starLight);
 
     let seed = 31;
     const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
@@ -67,36 +90,29 @@
     }, false);
     const glowTex = radial(255, 2.2, 1);
 
+    const std = (hex, rough, metal, extra) => new T.MeshStandardMaterial(Object.assign({ color: C(hex), roughness: rough, metalness: metal || 0 }, extra || {}));
+    const phys = (hex, rough, metal, extra) => new T.MeshPhysicalMaterial(Object.assign({ color: C(hex), roughness: rough, metalness: metal || 0 }, extra || {}));
+    const stripes = texFrom(64, 64, (u, v) => (((u + v) * 3) % 1 < 0.42 ? [214, 164, 62, 255] : [62, 140, 58, 255]), true);
+    stripes.repeat.set(1.4, 1.4);
     const mats = {
-      leafA: new T.MeshPhysicalMaterial({ color: C('#3F8B39'), roughness: 0.82, sheen: 1, sheenRoughness: 0.45, sheenColor: C('#B5EBA0') }),
-      leafB: new T.MeshPhysicalMaterial({ color: C('#357E31'), roughness: 0.82, sheen: 1, sheenRoughness: 0.45, sheenColor: C('#B5EBA0') }),
-      snow: new T.MeshPhysicalMaterial({ color: C('#FBF8FF'), roughness: 0.92, sheen: 0.5, sheenColor: C('#FFFFFF') }),
-      trunk: new T.MeshStandardMaterial({ color: C('#7B4B2A'), roughness: 0.95 }),
-      red: new T.MeshPhysicalMaterial({ color: C('#D3262C'), roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.12 }),
-      gold: new T.MeshPhysicalMaterial({ color: C('#E9B949'), roughness: 0.3, clearcoat: 0.8, clearcoatRoughness: 0.2 }),
-      ribbon: new T.MeshStandardMaterial({ color: C('#D8312E'), roughness: 0.5 }),
-      ribbonCream: new T.MeshStandardMaterial({ color: C('#F1E2C4'), roughness: 0.55 }),
-      ribbonGold: new T.MeshStandardMaterial({ color: C('#E2B33C'), roughness: 0.45 }),
-      cream: new T.MeshStandardMaterial({ color: C('#F3E6CC'), roughness: 0.7 }),
-      green: new T.MeshStandardMaterial({ color: C('#3E8A3A'), roughness: 0.7 }),
-      ginger: new T.MeshStandardMaterial({ color: C('#C67B3C'), roughness: 0.75 }),
-      house: new T.MeshStandardMaterial({ color: C('#B8662E'), roughness: 0.75 }),
-      white: new T.MeshStandardMaterial({ color: C('#FFFFFF'), roughness: 0.6 }),
-      black: new T.MeshStandardMaterial({ color: C('#1E1A22'), roughness: 0.5 }),
-      orange: new T.MeshStandardMaterial({ color: C('#F08A2E'), roughness: 0.6 }),
-      wire: new T.MeshStandardMaterial({ color: C('#5A3B22'), roughness: 0.8 }),
-      bulb: new T.MeshBasicMaterial({ color: C('#FFF1B8') }),
-      windowGlow: new T.MeshBasicMaterial({ color: C('#FFD45C') })
+      leaf: std('#55A346', 0.78, 0, { envMapIntensity: 0.5 }),
+      leafIn: std('#52A044', 0.78, 0, { envMapIntensity: 0.45 }),
+      trunk: std('#6E3F25', 0.9),
+      star: std('#F7C64A', 0.24, 0.75, { emissive: C('#8A5A00'), emissiveIntensity: 0.35 }),
+      gold: std('#E2B04A', 0.28, 0.85),
+      beadGold: std('#E0B653', 0.32, 0.7),
+      beadRed: std('#B2402F', 0.32, 0.35),
+      red: phys('#CE2A2E', 0.2, 0.05, { clearcoat: 1, clearcoatRoughness: 0.12 }),
+      blue: phys('#2A69B3', 0.2, 0.05, { clearcoat: 1, clearcoatRoughness: 0.12 }),
+      green: phys('#2E8F3C', 0.2, 0.05, { clearcoat: 1, clearcoatRoughness: 0.12 }),
+      goldBall: std('#DDAA3E', 0.22, 0.9),
+      rugRed: std('#C8302C', 0.85, 0, { envMapIntensity: 0.6 }),
+      rugCream: std('#EFE8DD', 0.9, 0, { envMapIntensity: 0.7 }),
+      giftGreen: std('#3F8F3D', 0.6, 0, { envMapIntensity: 0.7 }),
+      giftRed: std('#CF2F2F', 0.55, 0, { envMapIntensity: 0.7 }),
+      giftStripe: std('#FFFFFF', 0.55, 0, { map: stripes, envMapIntensity: 0.7 }),
+      ribbon: std('#D9A845', 0.32, 0.6)
     };
-    const dots = texFrom(64, 64, (u, v) => {
-      const dx = (u % 0.5) - 0.25;
-      const dy = (v % 0.5) - 0.25;
-      return Math.sqrt(dx * dx + dy * dy) < 0.08 ? [250, 240, 228, 255] : [196, 36, 40, 255];
-    }, true);
-    dots.repeat.set(3, 3);
-    mats.dotted = new T.MeshStandardMaterial({ map: dots, roughness: 0.6 });
-    const stripes = texFrom(128, 32, (u, v) => (((u * 7 + v) % 1) < 0.5 ? [214, 38, 44, 255] : [252, 248, 244, 255]), true);
-    mats.cane = new T.MeshStandardMaterial({ map: stripes, roughness: 0.35 });
 
     const shade = (o) => { o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); return o; };
     const world = new T.Group();
@@ -104,309 +120,314 @@
     const spin = new T.Group();
     world.add(spin);
 
-    const catcher = new T.Mesh(new T.PlaneGeometry(14, 14), new T.ShadowMaterial({ opacity: 0.32 }));
-    catcher.rotation.x = -Math.PI / 2;
-    catcher.position.y = -0.02;
-    catcher.receiveShadow = true;
-    world.add(catcher);
-    const contact = new T.Mesh(new T.PlaneGeometry(7.4, 7.4), new T.MeshBasicMaterial({ map: radial(0, 1.6, 0.5), transparent: true, depthWrite: false }));
+    const contact = new T.Mesh(new T.PlaneGeometry(7.6, 7.6), new T.MeshBasicMaterial({ map: radial(0, 1.6, 0.55), transparent: true, depthWrite: false }));
     contact.rotation.x = -Math.PI / 2;
     contact.position.y = -0.01;
     world.add(contact);
 
-    const base = new T.Mesh(new T.SphereGeometry(1, 48, 24), mats.snow);
-    base.scale.set(2.75, 0.24, 2.75);
-    spin.add(base);
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2 + rnd() * 0.3;
-      const lump = new T.Mesh(new T.SphereGeometry(1, 24, 14), mats.snow);
-      const s = 0.32 + rnd() * 0.18;
-      lump.scale.set(s, s * 0.45, s);
-      lump.position.set(Math.cos(a) * 2.45, 0.06, Math.sin(a) * 2.45);
-      spin.add(lump);
+    /* ---------- rug: cream rim with a wavy red centre ---------- */
+    const rugR = 2.55;
+    const rugProf = [new T.Vector2(0, 0), new T.Vector2(rugR - 0.1, 0), new T.Vector2(rugR - 0.02, 0.015), new T.Vector2(rugR, 0.05), new T.Vector2(rugR - 0.03, 0.085), new T.Vector2(rugR - 0.12, 0.1), new T.Vector2(0, 0.1)];
+    const rug = new T.Mesh(new T.LatheGeometry(rugProf, 96), mats.rugCream);
+    spin.add(rug);
+    const redShape = new T.Shape();
+    for (let i = 0; i <= 180; i++) {
+      const a = (i / 180) * Math.PI * 2;
+      const r = 2.24 + 0.035 * Math.sin(a * 11) + 0.02 * Math.sin(a * 5 + 1);
+      if (i === 0) redShape.moveTo(Math.cos(a) * r, Math.sin(a) * r); else redShape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
     }
+    const redRug = new T.Mesh(new T.ExtrudeGeometry(redShape, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.015, bevelSegments: 2, curveSegments: 4 }), mats.rugRed);
+    redRug.rotation.x = -Math.PI / 2;
+    redRug.position.y = 0.095;
+    spin.add(redRug);
+    const floorY = 0.14;
 
-    const trunk = new T.Mesh(new T.CylinderGeometry(0.36, 0.46, 1.2, 28), mats.trunk);
-    trunk.position.y = 0.7;
+    const trunk = new T.Mesh(new T.CylinderGeometry(0.26, 0.32, 1.2, 24), mats.trunk);
+    trunk.position.y = floorY + 0.55;
     spin.add(trunk);
 
+    /* ---------- tiers: rounded, droopy, scalloped skirts ---------- */
+    // Each tier = a thin outer skirt with pointed, slightly upturned tips + a row of fat rounded drops in front.
+    // edge = bottom of the drops; the skirt's pointed tips stick out above them.
     const tiers = [
-      { rim: 1.05, h: 1.45, R: 2.15, lobes: 11, droop: 0.16 },
-      { rim: 1.8, h: 1.3, R: 1.8, lobes: 10, droop: 0.14 },
-      { rim: 2.52, h: 1.15, R: 1.45, lobes: 9, droop: 0.12 },
-      { rim: 3.2, h: 1.0, R: 1.1, lobes: 8, droop: 0.11 },
-      { rim: 3.82, h: 0.85, R: 0.74, lobes: 7, droop: 0.09 },
-      { rim: 4.32, h: 0.55, R: 0.38, lobes: 6, droop: 0.06 }
+      { edge: 0.74, R: 2.0, n: 9 },
+      { edge: 1.38, R: 1.73, n: 8 },
+      { edge: 2.01, R: 1.46, n: 8 },
+      { edge: 2.63, R: 1.2, n: 7 },
+      { edge: 3.24, R: 0.95, n: 6 },
+      { edge: 3.83, R: 0.72, n: 5 }
     ];
-    const makeTier = (t) => {
-      const k = 0.45 + t.R * 0.28;
+    tiers.forEach((t, i) => {
+      t.phase = i * 0.55;
+      t.sc = 0.62 + 0.38 * (t.R / 2.0);
+      t.ry = 0.35 * t.sc;
+      t.rim = t.edge + t.ry * 1.25;
+      t.H = (tiers[i + 1] ? tiers[i + 1].edge - t.edge : 0.5) + 0.7;
+    });
+    const tierMeshes = tiers.map(() => []);
+    const makeSkirt = (t) => {
+      const k = t.sc;
       const prof = [];
-      for (let i = 0; i <= 16; i++) {
-        const s = i / 16;
-        prof.push(new T.Vector2(t.R * (0.03 + 0.97 * Math.pow(s, 0.9)), t.h * (1 - s) + t.h * 0.05 * Math.sin(s * Math.PI)));
+      for (let i = 0; i <= 20; i++) {
+        const s = i / 20;
+        prof.push(new T.Vector2(t.R * (0.04 + 0.96 * Math.pow(s, 0.85)), t.H * (1 - s) + t.H * 0.06 * Math.sin(s * Math.PI)));
       }
-      [[0.06, -0.07], [0.04, -0.16], [-0.06, -0.23], [-0.22, -0.25]].forEach((p) => prof.push(new T.Vector2(t.R + p[0] * k, p[1] * k)));
-      prof.push(new T.Vector2(t.R * 0.55, -0.13 * k));
-      prof.push(new T.Vector2(t.R * 0.2, -0.02 * k));
-      const g = new T.LatheGeometry(prof, 160, Math.PI, Math.PI * 2);
+      [[0.03, -0.04], [0.0, -0.09], [-0.08, -0.12], [-0.2, -0.1]].forEach((p) => prof.push(new T.Vector2(t.R + p[0] * k, p[1] * k)));
+      prof.push(new T.Vector2(t.R * 0.5, -0.06 * k));
+      prof.push(new T.Vector2(0.03, -0.02));
+      const g = new T.LatheGeometry(prof, 150, Math.PI, Math.PI * 2);
       const pos = g.attributes.position;
       const v = new T.Vector3();
       for (let i = 0; i < pos.count; i++) {
         v.fromBufferAttribute(pos, i);
         const th = Math.atan2(v.z, v.x);
         const rad = Math.sqrt(v.x * v.x + v.z * v.z);
-        let w = (t.h * 0.6 - v.y) / (t.h * 0.6 + 0.25 * k);
-        w = Math.pow(Math.max(0, Math.min(1, w)), 1.5);
-        const L = Math.pow((Math.cos(t.lobes * th) + 1) / 2, 0.6);
-        const nr = rad * (1 + 0.1 * L * w);
-        v.y += -t.droop * L * w + t.droop * 0.35 * (1 - L) * w;
+        const a = t.n * th - t.phase * t.n;
+        const P = Math.pow((1 - Math.cos(a)) / 2, 2.2); // 1 at the pointed tips, 0 behind the drops
+        let w = (rad / t.R - 0.45) / 0.55;
+        w = Math.max(0, Math.min(1, w));
+        w = w * w;
+        const nr = rad * (1 + 0.2 * P * w - 0.1 * (1 - P) * w);
+        v.y += 0.16 * t.sc * P * w * w - 0.06 * t.sc * (1 - P) * w;
         pos.setXYZ(i, Math.cos(th) * nr, v.y, Math.sin(th) * nr);
       }
       g.computeVertexNormals();
       return g;
     };
-    const surf = (t, f, th, out) => {
-      const r = t.R * (0.03 + 0.97 * Math.pow(1 - f, 0.9)) + (out || 0);
-      return new T.Vector3(Math.cos(th) * r, t.rim + t.h * f, Math.sin(th) * r);
-    };
-    const face = (o, th, tilt) => { o.rotation.set(tilt || -0.32, Math.PI / 2 - th, 0, 'YXZ'); };
-    tiers.forEach((t, i) => {
-      const m = new T.Mesh(makeTier(t), i % 2 ? mats.leafB : mats.leafA);
-      m.position.y = t.rim;
-      spin.add(m);
+    const dropGeo = (() => {
+      const g = new T.SphereGeometry(1, 24, 16);
+      const pos = g.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const y = pos.getY(i);
+        const f = 1.1 - 0.32 * ((y + 1) / 2); // fuller at the bottom, like a drop
+        pos.setXYZ(i, pos.getX(i) * f, y, pos.getZ(i) * f);
+      }
+      g.computeVertexNormals();
+      return g;
+    })();
+    tiers.forEach((t, ti) => {
+      const skirt = new T.Mesh(makeSkirt(t), mats.leaf);
+      skirt.position.y = t.rim;
+      spin.add(skirt);
+      tierMeshes[ti].push(skirt);
+      const rp = t.R * 0.7;
+      const half = rp * Math.sin(Math.PI / t.n);
+      for (let j = 0; j < t.n; j++) {
+        const th = (j * Math.PI * 2) / t.n + t.phase;
+        const d = new T.Mesh(dropGeo, mats.leafIn);
+        d.scale.set(half * 1.2, t.ry, 0.36 * t.sc);
+        d.position.set(Math.cos(th) * rp, t.edge + t.ry * 0.95, Math.sin(th) * rp);
+        d.rotation.set(-0.28, Math.PI / 2 - th, 0, 'YXZ');
+        spin.add(d);
+        tierMeshes[ti].push(d);
+      }
     });
-
-    const snowCap = (ti, lobe) => {
-      const t = tiers[ti];
-      const th = (lobe / t.lobes) * Math.PI * 2;
-      const k = 0.45 + t.R * 0.28;
-      const c = new T.Mesh(new T.SphereGeometry(1, 24, 16), mats.snow);
-      c.scale.set(0.34 * k, 0.13 * k, 0.24 * k);
-      c.position.set(Math.cos(th) * t.R * 0.9, t.rim + 0.06 * k, Math.sin(th) * t.R * 0.9);
-      c.rotation.y = -(th + Math.PI / 2);
-      spin.add(c);
-    };
-    [[0, 5], [0, 6], [0, 1], [1, 9], [1, 4], [2, 3], [2, 6], [3, 5], [4, 2]].forEach((p) => snowCap(p[0], p[1]));
-    const topSnow = new T.Mesh(new T.SphereGeometry(1, 24, 16), mats.snow);
-    topSnow.scale.set(0.3, 0.14, 0.3);
-    topSnow.position.y = 4.86;
-    spin.add(topSnow);
-
-    const starShape = new T.Shape();
-    for (let i = 0; i < 10; i++) {
-      const a = -Math.PI / 2 + (i * Math.PI) / 5;
-      const rr = i % 2 === 0 ? 0.5 : 0.24;
-      const x = Math.cos(a) * rr;
-      const y = -Math.sin(a) * rr;
-      if (i === 0) starShape.moveTo(x, y); else starShape.lineTo(x, y);
+    const top = tiers[tiers.length - 1];
+    const spikeProf = [];
+    for (let i = 0; i <= 14; i++) {
+      const s = i / 14;
+      spikeProf.push(new T.Vector2(0.34 * Math.pow(1 - s, 1.7) + 0.012, 1.0 * s));
     }
-    starShape.closePath();
-    const starGeo = new T.ExtrudeGeometry(starShape, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.09, bevelSegments: 6, curveSegments: 6 });
-    starGeo.center();
-    const star = new T.Mesh(starGeo, new T.MeshStandardMaterial({ color: C('#FFD54A'), emissive: C('#FFB300'), emissiveIntensity: 0.65, roughness: 0.35 }));
-    star.position.y = 5.3;
+    spikeProf.push(new T.Vector2(0, 1.0));
+    const spike = new T.Mesh(new T.LatheGeometry(spikeProf, 48), mats.leaf);
+    spike.position.y = top.rim + 0.2;
+    spin.add(spike);
+    const tipY = spike.position.y + 1.0;
+
+    // Outside of a tier at angle th and height y (for garlands and baubles): the skirt or a drop, whichever sticks out more.
+    spin.updateMatrixWorld(true);
+    const dropsOf = tierMeshes.map((list) => list.slice(1).map((m) => new T.Matrix4().copy(m.matrixWorld).invert()));
+    const skirtR = (t, th, y) => {
+      const s = Math.max(0, Math.min(1, 1 - (y - t.rim) / t.H));
+      const rad = t.R * (0.04 + 0.96 * Math.pow(s, 0.85));
+      const P = Math.pow((1 - Math.cos(t.n * th - t.phase * t.n)) / 2, 2.2);
+      let w = Math.max(0, Math.min(1, (rad / t.R - 0.45) / 0.55));
+      w = w * w;
+      return rad * (1 + 0.2 * P * w - 0.1 * (1 - P) * w);
+    };
+    const o = new T.Vector3(), dv = new T.Vector3();
+    const surfAt = (ti, th, y, out) => {
+      let r = skirtR(tiers[ti], th, y);
+      if (tiers[ti + 1] && y > tiers[ti + 1].rim - 0.1) r = Math.max(r, skirtR(tiers[ti + 1], th, y));
+      const cx = Math.cos(th), cz = Math.sin(th);
+      [ti, ti + 1].forEach((k) => (dropsOf[k] || []).forEach((inv) => {
+        o.set(cx * 6, y, cz * 6).applyMatrix4(inv);
+        dv.set(-cx, 0, -cz).transformDirection(inv).multiplyScalar(1);
+        // transformDirection normalises, so rescale to keep t in world units
+        const len = new T.Vector3(-cx, 0, -cz).applyMatrix4(inv).sub(new T.Vector3().applyMatrix4(inv)).length();
+        dv.multiplyScalar(len);
+        const a = dv.dot(dv), b = 2 * o.dot(dv), c = o.dot(o) - 1.04;
+        const disc = b * b - 4 * a * c;
+        if (disc <= 0) return;
+        const tt = (-b - Math.sqrt(disc)) / (2 * a);
+        if (tt > 0) r = Math.max(r, 6 - tt);
+      }));
+      return new T.Vector3(cx * (r + out), y, cz * (r + out));
+    };
+
+    /* ---------- star on a gold finial ---------- */
+    const finial = new T.Mesh(new T.CylinderGeometry(0.075, 0.11, 0.26, 20), mats.gold);
+    finial.position.y = tipY - 0.02;
+    spin.add(finial);
+    // Faceted 3D star: a ridge runs from the centre to every point, front and back.
+    const starPts = [];
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 === 0 ? 0.47 : 0.21;
+      starPts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
+    }
+    const sv = [];
+    const dz = 0.17;
+    for (let i = 0; i < 10; i++) {
+      const p0 = starPts[i], p1 = starPts[(i + 1) % 10];
+      sv.push(0, 0, dz, p0[0], p0[1], 0, p1[0], p1[1], 0);
+      sv.push(0, 0, -dz, p1[0], p1[1], 0, p0[0], p0[1], 0);
+    }
+    const starGeo = new T.BufferGeometry();
+    starGeo.setAttribute('position', new T.Float32BufferAttribute(sv, 3));
+    starGeo.computeVertexNormals();
+    const star = new T.Mesh(starGeo, mats.star);
+    star.position.y = tipY + 0.44;
     spin.add(star);
-    const starGlow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: C('#FFD86B'), transparent: true, opacity: 0.55, blending: T.AdditiveBlending, depthWrite: false }));
-    starGlow.position.y = 5.3;
-    starGlow.scale.setScalar(2.4);
+    const starGlow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: C('#FFD86B'), transparent: true, opacity: 0.32, blending: T.AdditiveBlending, depthWrite: false }));
+    starGlow.position.y = star.position.y;
+    starGlow.scale.setScalar(2.0);
     spin.add(starGlow);
 
-    const lights = [];
-    const strings = [[0, 0.34, 7], [1, 0.32, 6], [2, 0.32, 6], [3, 0.34, 5]];
-    strings.forEach((sdef) => {
-      const t = tiers[sdef[0]];
+    /* ---------- bead garlands, draped in swags ---------- */
+    const beadGeo = new T.SphereGeometry(1, 6, 4);
+    const garland = (ti, dy, swags, sag, mat, bead, phase) => {
+      const t = tiers[ti];
       const pts = [];
-      const N = 220;
-      for (let i = 0; i <= N; i++) {
-        const th = (i / N) * Math.PI * 2;
-        const sag = Math.abs(Math.sin((sdef[2] * th) / 2));
-        const f = sdef[1] - (0.12 * sag) / t.h;
-        pts.push(surf(t, f, th, 0.05));
+      const N = 200;
+      for (let i = 0; i < N; i++) {
+        const th = (i / N) * Math.PI * 2 + (phase || 0);
+        const dip = Math.abs(Math.sin((swags * (th - (phase || 0))) / 2));
+        pts.push(surfAt(ti, th, t.edge + dy - sag * dip, bead * 0.9));
       }
       const curve = new T.CatmullRomCurve3(pts, true);
-      spin.add(new T.Mesh(new T.TubeGeometry(curve, 300, 0.016, 6, true), mats.wire));
-      const count = Math.round(t.R * 10);
-      for (let i = 0; i < count; i++) {
-        const p = curve.getPointAt((i + 0.5) / count);
-        const b = new T.Mesh(new T.SphereGeometry(0.055, 12, 8), mats.bulb);
-        b.position.copy(p);
-        spin.add(b);
-        const spr = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: C('#FFD978'), transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
-        spr.position.copy(p);
-        spr.scale.setScalar(0.5);
-        spin.add(spr);
-        lights.push({ spr: spr, phase: rnd() * Math.PI * 2, speed: 0.5 + rnd() * 0.8 });
+      const n = Math.floor(curve.getLength() / (bead * 2.05));
+      const inst = new T.InstancedMesh(beadGeo, mat, n);
+      const m4 = new T.Matrix4();
+      for (let i = 0; i < n; i++) {
+        const p = curve.getPointAt(i / n);
+        m4.makeScale(bead, bead, bead).setPosition(p);
+        inst.setMatrixAt(i, m4);
       }
-    });
+      inst.castShadow = false;
+      spin.add(inst);
+    };
+    garland(5, 0.62, 3, 0.1, mats.beadGold, 0.034, 0.3);
+    garland(4, 0.5, 4, 0.13, mats.beadRed, 0.036, 1.1);
+    garland(3, 0.52, 4, 0.15, mats.beadGold, 0.038, 0.2);
+    garland(2, 0.52, 5, 0.17, mats.beadRed, 0.04, 0.9);
+    garland(1, 0.55, 5, 0.18, mats.beadGold, 0.04, 0.5);
+    garland(0, 0.55, 6, 0.2, mats.beadRed, 0.042, 0.1);
 
-    const bauble = (ti, lobe, mat, size) => {
-      const t = tiers[ti];
-      const th = ((lobe + 0.5) / t.lobes) * Math.PI * 2;
+    /* ---------- baubles ---------- */
+    const capGeo = new T.CylinderGeometry(0.28, 0.28, 0.24, 14);
+    const bauble = (x, y, z, mat, size) => {
       const g = new T.Group();
-      const ball = new T.Mesh(new T.SphereGeometry(size, 28, 18), mat);
-      g.add(ball);
-      const cap = new T.Mesh(new T.CylinderGeometry(size * 0.28, size * 0.28, size * 0.22, 14), mats.gold);
+      g.add(new T.Mesh(new T.SphereGeometry(size, 20, 14), mat));
+      const cap = new T.Mesh(capGeo, mats.gold);
+      cap.scale.setScalar(size);
       cap.position.y = size * 0.98;
       g.add(cap);
-      g.position.set(Math.cos(th) * t.R * 0.97, t.rim - 0.1, Math.sin(th) * t.R * 0.97);
+      g.position.set(x, y, z);
       spin.add(g);
     };
-    [[0, 2, 'red', 0.2], [0, 8, 'gold', 0.18], [1, 1, 'red', 0.19], [1, 6, 'red', 0.19], [2, 0, 'gold', 0.16], [2, 5, 'red', 0.17], [3, 2, 'red', 0.15], [3, 6, 'gold', 0.14], [4, 4, 'red', 0.13], [0, 4, 'red', 0.2]].forEach((b) => bauble(b[0], b[1], mats[b[2]], b[3]));
+    // hanging under a pointed tip of the outer skirt
+    const tipBauble = (ti, tipN, mat, size) => {
+      const t = tiers[ti];
+      const th = ((tipN + 0.5) * Math.PI * 2) / t.n + t.phase;
+      const r = t.R * 1.12;
+      bauble(Math.cos(th) * r, t.rim + 0.06 - size * 1.05, Math.sin(th) * r, mat, size);
+    };
+    // resting on the front of a tier
+    const onBauble = (ti, dy, th, mat, size) => {
+      const p = surfAt(ti, th, tiers[ti].edge + dy, size * 0.75);
+      bauble(p.x, p.y, p.z, mat, size);
+    };
+    const P = Math.PI;
+    [[0, 0, 'goldBall', 0.16], [0, 2, 'red', 0.18], [0, 4, 'blue', 0.17], [0, 6, 'goldBall', 0.16], [0, 8, 'red', 0.18],
+      [1, 1, 'red', 0.17], [1, 3, 'goldBall', 0.16], [1, 5, 'blue', 0.16], [1, 7, 'red', 0.17],
+      [2, 0, 'blue', 0.15], [2, 2, 'red', 0.16], [2, 4, 'goldBall', 0.15], [2, 6, 'red', 0.16],
+      [3, 1, 'red', 0.14], [3, 4, 'blue', 0.14],
+      [4, 0, 'goldBall', 0.12], [4, 3, 'red', 0.12]].forEach((b) => tipBauble(b[0], b[1], mats[b[2]], b[3]));
+    [[0, 0.22, P * 0.5, 'blue', 0.16], [0, 0.34, P * 0.85, 'green', 0.16], [0, 0.26, P * 1.3, 'red', 0.16], [0, 0.32, P * 1.75, 'goldBall', 0.16],
+      [1, 0.3, P * 0.3, 'goldBall', 0.15], [1, 0.24, P * 0.66, 'red', 0.16], [1, 0.32, P * 1.15, 'goldBall', 0.15], [1, 0.28, P * 1.6, 'red', 0.16],
+      [2, 0.26, P * 0.52, 'red', 0.15], [2, 0.32, P * 0.2, 'green', 0.14], [2, 0.28, P * 1.0, 'red', 0.15], [2, 0.26, P * 1.45, 'blue', 0.14],
+      [3, 0.3, P * 0.4, 'goldBall', 0.13], [3, 0.3, P * 0.72, 'goldBall', 0.13], [3, 0.3, P * 1.3, 'red', 0.13],
+      [4, 0.26, P * 0.55, 'red', 0.11], [4, 0.26, P * 1.5, 'goldBall', 0.11]].forEach((b) => onBauble(b[0], b[1], b[2], mats[b[3]], b[4]));
 
-    const caneGeo = (() => {
-      const pts = [new T.Vector3(0, -0.42, 0), new T.Vector3(0, -0.1, 0), new T.Vector3(0, 0.18, 0)];
-      for (let i = 0; i <= 8; i++) {
-        const a = Math.PI - (i / 8) * Math.PI * 0.95;
-        pts.push(new T.Vector3(0.13 + Math.cos(a) * 0.13, 0.2 + Math.sin(a) * 0.13, 0));
+    /* ---------- presents ---------- */
+    const roundedBox = (w, h, d, r) => {
+      const seg = 7;
+      const g = new T.BoxGeometry(w, h, d, seg, seg, seg);
+      const p = g.attributes.position;
+      const nrm = g.attributes.normal;
+      const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r;
+      const v = new T.Vector3(), c = new T.Vector3(), n = new T.Vector3();
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i);
+        c.set(Math.max(-hx, Math.min(hx, v.x)), Math.max(-hy, Math.min(hy, v.y)), Math.max(-hz, Math.min(hz, v.z)));
+        n.subVectors(v, c);
+        if (n.lengthSq() < 1e-9) n.fromBufferAttribute(nrm, i);
+        n.normalize();
+        p.setXYZ(i, c.x + n.x * r, c.y + n.y * r, c.z + n.z * r);
+        nrm.setXYZ(i, n.x, n.y, n.z);
       }
-      pts.push(new T.Vector3(0.27, 0.12, 0));
-      return new T.TubeGeometry(new T.CatmullRomCurve3(pts), 64, 0.045, 12, false);
-    })();
-    const cane = (ti, f, th) => {
-      const g = new T.Group();
-      g.add(new T.Mesh(caneGeo, mats.cane));
-      g.position.copy(surf(tiers[ti], f, th, 0.08));
-      face(g, th);
-      spin.add(g);
-    };
-    cane(1, 0.45, Math.PI * 0.62);
-    cane(3, 0.42, Math.PI * 0.28);
-    cane(2, 0.4, Math.PI * 1.35);
-    cane(0, 0.5, Math.PI * 1.9);
-
-    const bow = (ti, f, th, mat, scale) => {
-      const g = new T.Group();
-      const loopGeo = new T.TorusGeometry(0.11, 0.035, 10, 28);
-      [-1, 1].forEach((sd) => {
-        const lp = new T.Mesh(loopGeo, mat);
-        lp.scale.set(1, 0.62, 0.55);
-        lp.position.set(sd * 0.11, 0.02, 0);
-        lp.rotation.z = sd * 0.35;
-        g.add(lp);
-        const tail = new T.Mesh(new T.BoxGeometry(0.06, 0.22, 0.025), mat);
-        tail.position.set(sd * 0.05, -0.12, 0);
-        tail.rotation.z = sd * 0.35;
-        g.add(tail);
-      });
-      g.add(new T.Mesh(new T.SphereGeometry(0.05, 14, 10), mat));
-      g.scale.setScalar(scale || 1);
-      g.position.copy(surf(tiers[ti], f, th, 0.06));
-      face(g, th);
-      spin.add(g);
       return g;
     };
-    bow(1, 0.35, Math.PI * 0.5, mats.ribbon, 1.5);
-    bow(2, 0.5, Math.PI * 0.95, mats.ribbon, 1.2);
-    bow(0, 0.45, Math.PI * 1.25, mats.ribbon, 1.4);
-
-    const gingerbread = (() => {
+    const loopGeo = new T.TorusGeometry(0.14, 0.06, 12, 30);
+    const gift = (w, h, d, x, z, ry, boxMat) => {
       const g = new T.Group();
-      const add = (geo, x, y, rz, sx, sy) => { const m = new T.Mesh(geo, mats.ginger); m.position.set(x, y, 0); m.rotation.z = rz || 0; m.scale.set(sx || 1, sy || 1, 1); g.add(m); };
-      add(new T.SphereGeometry(0.1, 20, 14), 0, 0.17);
-      add(new T.CapsuleGeometry(0.085, 0.12, 6, 14), 0, 0);
-      add(new T.CapsuleGeometry(0.04, 0.12, 6, 10), -0.12, 0.04, 1.2);
-      add(new T.CapsuleGeometry(0.04, 0.12, 6, 10), 0.12, 0.04, -1.2);
-      add(new T.CapsuleGeometry(0.045, 0.12, 6, 10), -0.05, -0.15, 0.3);
-      add(new T.CapsuleGeometry(0.045, 0.12, 6, 10), 0.05, -0.15, -0.3);
-      [[-0.035, 0.19], [0.035, 0.19], [0, 0.03], [0, -0.03]].forEach((p) => { const d = new T.Mesh(new T.SphereGeometry(0.014, 8, 6), mats.white); d.position.set(p[0], p[1], 0.075); g.add(d); });
-      const tie = new T.Mesh(new T.SphereGeometry(0.025, 8, 6), mats.ribbon);
-      tie.position.set(0, 0.09, 0.08);
-      g.add(tie);
-      g.scale.set(1.5, 1.5, 0.75);
-      return g;
-    })();
-    gingerbread.position.copy(surf(tiers[0], 0.32, Math.PI * 0.72, 0.1));
-    face(gingerbread, Math.PI * 0.72);
-    spin.add(gingerbread);
-
-    const house = (() => {
-      const g = new T.Group();
-      const body = new T.Mesh(new T.BoxGeometry(0.24, 0.18, 0.16), mats.house);
-      g.add(body);
-      const roofShape = new T.Shape();
-      roofShape.moveTo(-0.17, 0);
-      roofShape.lineTo(0, 0.14);
-      roofShape.lineTo(0.17, 0);
-      roofShape.closePath();
-      const roof = new T.Mesh(new T.ExtrudeGeometry(roofShape, { depth: 0.2, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 3 }), mats.snow);
-      roof.position.set(0, 0.085, -0.1);
-      g.add(roof);
-      const win = new T.Mesh(new T.PlaneGeometry(0.08, 0.08), mats.windowGlow);
-      win.position.set(0, -0.01, 0.081);
-      g.add(win);
-      const glow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: C('#FFC94D'), transparent: true, opacity: 0.6, blending: T.AdditiveBlending, depthWrite: false }));
-      glow.position.set(0, -0.01, 0.1);
-      glow.scale.setScalar(0.32);
-      g.add(glow);
-      g.scale.setScalar(1.35);
-      return g;
-    })();
-    house.position.copy(surf(tiers[2], 0.42, Math.PI * 0.42, 0.12));
-    face(house, Math.PI * 0.42, -0.2);
-    spin.add(house);
-
-    const snowman = (() => {
-      const g = new T.Group();
-      const body = new T.Mesh(new T.SphereGeometry(0.13, 22, 16), mats.white);
-      g.add(body);
-      const head = new T.Mesh(new T.SphereGeometry(0.09, 20, 14), mats.white);
-      head.position.y = 0.19;
-      g.add(head);
-      [[-0.03, 0.21], [0.03, 0.21]].forEach((p) => { const e = new T.Mesh(new T.SphereGeometry(0.012, 8, 6), mats.black); e.position.set(p[0], p[1], 0.083); g.add(e); });
-      const nose = new T.Mesh(new T.ConeGeometry(0.018, 0.07, 10), mats.orange);
-      nose.rotation.x = Math.PI / 2;
-      nose.position.set(0, 0.185, 0.11);
-      g.add(nose);
-      const scarf = new T.Mesh(new T.TorusGeometry(0.075, 0.025, 10, 24), mats.ribbon);
-      scarf.rotation.x = Math.PI / 2;
-      scarf.position.y = 0.115;
-      g.add(scarf);
-      const brim = new T.Mesh(new T.CylinderGeometry(0.085, 0.085, 0.015, 20), mats.black);
-      brim.position.y = 0.265;
-      g.add(brim);
-      const hat = new T.Mesh(new T.CylinderGeometry(0.055, 0.06, 0.08, 20), mats.black);
-      hat.position.y = 0.31;
-      g.add(hat);
-      g.scale.setScalar(1.3);
-      return g;
-    })();
-    snowman.position.copy(surf(tiers[1], 0.4, Math.PI * 0.18, 0.14));
-    face(snowman, Math.PI * 0.18, -0.15);
-    spin.add(snowman);
-
-    const gift = (w, h, d, x, z, ry, boxMat, ribMat) => {
-      const g = new T.Group();
-      const box = new T.Mesh(new T.BoxGeometry(w, h, d), boxMat);
-      g.add(box);
-      const r1 = new T.Mesh(new T.BoxGeometry(w + 0.02, h + 0.02, Math.min(0.14, d * 0.18)), ribMat);
-      g.add(r1);
-      const r2 = new T.Mesh(new T.BoxGeometry(Math.min(0.14, w * 0.18), h + 0.02, d + 0.02), ribMat);
-      g.add(r2);
-      const loopGeo = new T.TorusGeometry(0.13 * Math.min(1, w + 0.2), 0.04, 10, 26);
+      g.add(new T.Mesh(roundedBox(w, h, d, Math.min(0.05, w * 0.08)), boxMat));
+      const band = Math.min(0.11, w * 0.16);
+      g.add(new T.Mesh(new T.BoxGeometry(w + 0.012, h + 0.012, band), mats.ribbon));
+      g.add(new T.Mesh(new T.BoxGeometry(band, h + 0.012, d + 0.012), mats.ribbon));
+      const s = Math.min(1.25, 0.55 + w * 0.6);
+      const bow = new T.Group();
       [-1, 1].forEach((sd) => {
-        const lp = new T.Mesh(loopGeo, ribMat);
-        lp.scale.set(1, 0.7, 0.6);
-        lp.position.set(sd * 0.12 * Math.min(1, w + 0.2), h / 2 + 0.07, 0);
-        lp.rotation.z = sd * 0.5;
-        g.add(lp);
+        const lp = new T.Mesh(loopGeo, mats.ribbon);
+        lp.scale.set(1, 0.85, 0.5);
+        lp.position.set(sd * 0.15, 0.08, 0);
+        lp.rotation.z = sd * 0.45;
+        bow.add(lp);
+        const tail = new T.Mesh(new T.BoxGeometry(0.07, 0.24, 0.02), mats.ribbon);
+        tail.position.set(sd * 0.08, -0.02, 0.08);
+        tail.rotation.set(-0.9, 0, sd * 0.7);
+        bow.add(tail);
       });
-      const knot = new T.Mesh(new T.SphereGeometry(0.055, 14, 10), ribMat);
-      knot.position.y = h / 2 + 0.03;
-      g.add(knot);
-      g.position.set(x, 0.17 + h / 2, z);
+      const knot = new T.Mesh(new T.SphereGeometry(0.06, 14, 10), mats.ribbon);
+      knot.scale.set(1, 0.8, 0.8);
+      knot.position.y = 0.04;
+      bow.add(knot);
+      bow.scale.setScalar(s);
+      bow.position.y = h / 2;
+      g.add(bow);
+      g.position.set(x, floorY + h / 2, z);
       g.rotation.y = ry;
       spin.add(g);
-      return g;
     };
-    gift(1.05, 0.72, 0.85, -1.0, 0.95, 0.25, mats.dotted, mats.ribbonCream);
-    gift(1.0, 0.7, 0.9, 1.15, 0.7, -0.3, mats.cream, mats.ribbon);
-    gift(0.62, 0.55, 0.6, 0.2, 1.45, 0.12, mats.green, mats.ribbonGold);
-    gift(0.55, 0.4, 0.5, -0.3, 1.9, -0.2, mats.cream, mats.ribbon);
-    gift(0.85, 0.6, 0.75, -0.7, -1.25, 0.4, mats.red, mats.ribbonCream);
-    gift(0.8, 0.55, 0.8, 1.0, -1.0, -0.5, mats.cream, mats.ribbon);
-    gift(0.6, 0.5, 0.55, -1.7, -0.1, 0.9, mats.green, mats.ribbonGold);
+    gift(0.78, 0.46, 0.7, -1.45, 0.75, 0.12, mats.giftGreen);
+    gift(0.6, 0.44, 0.56, -1.05, 0.15, -0.2, mats.giftRed);
+    gift(0.44, 0.3, 0.42, -0.95, 1.6, 0.18, mats.giftGreen);
+    gift(0.7, 0.48, 0.62, -0.38, 1.25, -0.06, mats.giftRed);
+    gift(0.6, 0.32, 0.52, 0.14, 1.8, 0.05, mats.giftGreen);
+    gift(0.82, 0.5, 0.72, 0.68, 1.15, -0.12, mats.giftStripe);
+    gift(0.32, 0.28, 0.32, 1.25, 1.7, 0.3, mats.giftRed);
+    gift(0.72, 0.46, 0.68, 1.5, 0.55, 0.25, mats.giftGreen);
+    gift(0.7, 0.44, 0.62, 0.95, -1.35, 0.5, mats.giftRed);
+    gift(0.62, 0.4, 0.58, -0.4, -1.65, -0.3, mats.giftStripe);
+    gift(0.56, 0.38, 0.52, -1.55, -0.95, 0.7, mats.giftGreen);
     shade(spin);
-    base.castShadow = false;
+    rug.castShadow = false;
+    redRug.castShadow = false;
+    // only the big shapes cast shadows; baubles, beads and the star don't need to
+    spin.traverse((m) => { if (m.isMesh && m.geometry && m.geometry.boundingSphere === null) m.geometry.computeBoundingSphere(); });
+    spin.traverse((m) => { if (m.isMesh && m.geometry.boundingSphere.radius * Math.max(m.scale.x, m.scale.y, m.scale.z) < 0.25) m.castShadow = false; });
+    star.castShadow = false;
 
     const resize = () => {
       const w = canvas.clientWidth;
@@ -429,6 +450,7 @@
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let rotY = 0;
     let rotX = 0;
+    let lastY = NaN, lastX = NaN, lastDraw = -1;
     const clock = new T.Clock();
     const loop = () => {
       if (this._dead) return;
@@ -439,16 +461,24 @@
       const ease = Math.min(1, dt * 4);
       rotY += ((this._mx || 0) * 2.4 - rotY) * ease;
       rotX += ((this._my || 0) * 0.12 - rotX) * ease;
+      // Redraw only while the tree is turning; otherwise a few times a second for the star's glow.
+      const moving = Math.abs(rotY - lastY) > 1e-4 || Math.abs(rotX - lastX) > 1e-5 || lastY !== lastY;
+      if (!moving && t - lastDraw < (still || slow ? 1e9 : 0.12)) return;
+      lastY = rotY; lastX = rotX; lastDraw = t;
       spin.rotation.y = rotY;
       world.rotation.x = rotX;
-      lights.forEach((l) => {
-        const k = still ? 1 : 0.6 + 0.4 * Math.sin(t * l.speed * 2 + l.phase);
-        l.spr.material.opacity = k;
-        l.spr.scale.setScalar(0.38 + k * 0.2);
-      });
-      starGlow.material.opacity = still ? 0.55 : 0.48 + 0.12 * Math.sin(t * 1.2);
+      starGlow.material.opacity = still ? 0.32 : 0.28 + 0.08 * Math.sin(t * 1.2);
+      const t0 = performance.now();
       renderer.render(scene, camera);
+      // On a slow device, drop to standard resolution and stop idle redraws.
+      cost = cost * 0.8 + (performance.now() - t0) * 0.2;
+      if (++frames > 5 && cost > 45 && !slow) {
+        slow = true;
+        renderer.setPixelRatio(1);
+        resize();
+      }
     };
+    let cost = 0, frames = 0, slow = false;
     loop();
   }
 

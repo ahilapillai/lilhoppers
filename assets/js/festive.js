@@ -29,7 +29,7 @@
       const out = [];
       for (let i = 0; i < n; i++) {
         const star = rnd() < 0.45;
-        const size = star ? 11 + rnd() * 12 : 2 + rnd() * 4.5;
+        const size = star ? 10 + rnd() * 8 : 2 + rnd() * 4;
         const dur = dMin + rnd() * (dMax - dMin);
         out.push({
           cls: 'lh-flake' + (star ? ' lh-star' : '') + (star && rnd() < 0.5 ? ' lh-soft' : '') + (rnd() < 0.5 ? ' lh-sway-r' : ''),
@@ -57,10 +57,10 @@
     return {
       bulbs: bulbs,
       arcBulbs: arcBulbs,
-      snowTall: mk(70, 75, 105),
-      snowA: mk(46, 58, 82),
-      snowB: mk(46, 58, 82),
-      nearSnow: mk(16, 38, 54)
+      snowTall: mk(34, 75, 105),
+      snowA: mk(22, 58, 82),
+      snowB: mk(22, 58, 82),
+      nearSnow: mk(6, 38, 54)
     };
   }
   function esc(v) {

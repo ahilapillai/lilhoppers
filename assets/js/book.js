@@ -188,6 +188,7 @@
     if (!h) return go('choose');
     fill('bookingId', h.bookingId);
     fill('total', P.rupees(h.amounts.total));
+    fill('admit', admitLabel(h.amounts.children, h.amounts.extraParent));
     fill('slotLine', h.slot.label + ' · ' + h.slot.time + ' · ' + cfg.EVENT_DATE);
     document.querySelectorAll('[data-lines="server"]').forEach(function (dl) { renderLines(dl, h.amounts); });
     $('upiId').textContent = h.upi.id;
@@ -289,7 +290,7 @@
   }
   function checkShot(shot) {
     var seq = ++checkSeq;
-    shot.check = { status: 'checking', message: 'Checking the name, date and time on your screenshot…' };
+    shot.check = { status: 'checking', message: 'Checking the date and time on your screenshot…' };
     showCheck(shot.check);
     var opts = {
       payeeNames: cfg.PAYEE_NAMES || [], upiId: cfg.UPI_ID, toleranceMinutes: cfg.SCREENSHOT_TOLERANCE_MINUTES || 15,

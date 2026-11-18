@@ -22,7 +22,8 @@ test('same screenshot passes when uploaded a few minutes after paying', () => {
   const r = check(GPAY, '2026-11-16T09:01:00');
   assert.strictEqual(r.status, 'pass');
   assert.strictEqual(r.minutesOff, 8);
-  assert.match(r.message, /paid to AHILA PICHAIPILLAI today at 8:53 AM/);
+  assert.match(r.message, /^Checked: paid today at 8:53 AM\.$/);
+  assert.doesNotMatch(r.message, /AHILA/);
   assert.match(r.summary, /8 min before upload/);
 });
 
@@ -43,7 +44,8 @@ test('today and right time but someone else paid fails', () => {
   const r = check('Paid to\nRAVI KUMAR\n16 November 2026, 8:53am', '2026-11-16T08:58:00');
   assert.strictEqual(r.status, 'fail');
   assert.deepStrictEqual(r.problems, ['NO_PAYEE']);
-  assert.match(r.message, /can't see AHILA PICHAIPILLAI/);
+  assert.match(r.message, /doesn't look like a payment to Lil' Hoppers/);
+  assert.doesNotMatch(r.message, /AHILA/);
 });
 
 test('small OCR slips in the name still match', () => {

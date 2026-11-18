@@ -103,19 +103,18 @@
 <div class="bk-card bk-pay">
 <div class="bk-qr-wrap">
 <div class="bk-qr" id="qr" role="img" aria-label="UPI QR code"></div>
+<p class="bk-note">Pay the exact amount so we can match your payment to your booking.</p>
 </div>
 <div class="bk-pay-side">
-<p class="bk-pay-amount">Pay exactly <strong data-fill="total"></strong></p>
+<div class="bk-pay-head"><p class="bk-pay-amount">Pay exactly <strong data-fill="total"></strong></p><span class="bk-pay-admit" data-fill="admit"></span></div>
 <div class="bk-upi">
 <span class="bk-upi-label">Or pay to this UPI ID</span>
 <div class="bk-upi-row"><code id="upiId"></code><button type="button" class="bk-copy" id="copyUpi" aria-label="Copy UPI ID">Copy</button></div>
 </div>
 <a class="bk-btn bk-btn-ghost" id="upiLink" href="#">Open a UPI app on this phone</a>
-<p class="bk-note">Pay the exact amount so we can match your payment to your booking.</p>
-<p class="bk-error" id="holdExpired" role="alert" hidden>Your 20-minute hold has run out. If you've already paid, tap Payment done and share your proof. We'll keep your booking if the places are still free. If you haven't paid yet, please change your booking to start again.</p>
+<p class="bk-error" id="holdExpired" role="alert" hidden>Your 20-minute hold has run out. If you've already paid, tap Payment done and share your proof. We'll keep your booking if the places are still free. If you haven't paid yet, <button type="button" class="bk-link bk-link-inline" id="changeBooking">start again</button>.</p>
 <button type="button" class="bk-btn" id="paid">Payment done<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
 <p class="bk-muted bk-center">Tap this once your payment has gone through.</p>
-<button type="button" class="bk-link" id="changeBooking">Change my booking</button>
 </div>
 </div>
 <aside class="bk-card bk-summary" aria-label="Order summary">
@@ -132,7 +131,7 @@
 <div class="bk-intro">
 <p class="bk-eyebrow">Almost there</p>
 <h1 id="detailsTitle">Add your details</h1>
-<p class="bk-sub">Share your UPI transaction ID or a screenshot, so we can match your <span data-fill="total"></span> payment.</p>
+<p class="bk-sub">Share your UPI transaction ID or screenshot, so that we can confirm your booking.</p>
 </div>
 <form class="bk-ticket" id="detailsForm" novalidate>
 <div class="bk-ticket-top">
@@ -178,6 +177,7 @@
 <p class="bk-eyebrow">Booking received</p>
 <h1 id="doneTitle">Here's your ticket</h1>
 <p class="bk-sub">We're checking your payment now. Your confirmation email will come from hello.lilhoppers@gmail.com once it's verified, so keep an eye on your inbox (and spam).</p>
+<p class="bk-sub">Haven't received your confirmation in 2 days? Please WhatsApp us on <a href="https://wa.me/919686453295" target="_blank" rel="noopener" class="bk-wa">+91 96864 53295</a>.</p>
 </div>
 <article class="bk-ticket" aria-label="Your ticket">
 <div class="bk-ticket-top">

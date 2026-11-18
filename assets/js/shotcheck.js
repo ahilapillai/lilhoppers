@@ -164,14 +164,14 @@
 
     var message, summary;
     if (status === 'pass') {
-      message = 'Checked: paid to ' + payeeLabel + ' today at ' + fmtTime(best.h, best.mi) + '.';
+      message = 'Checked: paid today at ' + fmtTime(best.h, best.mi) + '.';
       summary = best.off >= 0 ? best.off + ' min before upload' : -best.off + ' min after upload';
     } else if (status === 'fail') {
       var why = [];
       if (problems.indexOf('OLD_DATE') >= 0) why.push('This screenshot is from ' + shows + ', not today.');
       if (problems.indexOf('TIME_EARLY') >= 0) why.push('This screenshot shows a payment at ' + fmtTime(best.h, best.mi) + ' today, ' + best.off + ' minutes ago. It should be the payment you just made.');
       if (problems.indexOf('TIME_LATE') >= 0) why.push('The time on this screenshot (' + fmtTime(best.h, best.mi) + ') is later than now.');
-      if (problems.indexOf('NO_PAYEE') >= 0) why.push("We can't see " + payeeLabel + ' as the person you paid.');
+      if (problems.indexOf('NO_PAYEE') >= 0) why.push("This doesn't look like a payment to Lil' Hoppers.");
       message = why.join(' ') + ' Please upload the screenshot of the payment you just made, or type its UPI transaction ID above.';
       summary = why.join(' ');
     } else {

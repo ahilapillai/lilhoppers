@@ -333,7 +333,6 @@
   }
 
   $('phone').addEventListener('input', function (e) { e.target.value = e.target.value.replace(/[^\d ]/g, '').slice(0, 14); });
-  $('utr').addEventListener('input', function (e) { e.target.value = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 35); });
 
   function readShot(file) {
     return new Promise(function (resolve, reject) {
@@ -395,6 +394,7 @@
       $('shotName').textContent = file.name;
       $('shotPreview').hidden = false;
       $('uploadBox').hidden = true;
+      $('uploadBox').classList.remove('is-missing');
       showError($('detailsError'), '');
       checkShot(shot);
     }, function (msg) { showError($('detailsError'), msg); });
@@ -414,21 +414,19 @@
     var email = $('email').value.trim();
     var phone = $('phone').value.replace(/\D/g, '');
     var kids = Array.prototype.map.call($('childFields').querySelectorAll('input'), function (i) { return i.value.trim(); });
-    var utr = $('utr').value.trim();
     var bad = function (id, msg) { var el = $(id); if (el) { el.setAttribute('aria-invalid', 'true'); el.focus(); } return msg; };
     document.querySelectorAll('#detailsForm [aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
     if (name.length < 2) return bad('parentName', "Add the parent's name.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return bad('email', 'Add a valid email address.');
     if (!/^[6-9]\d{9}$/.test(phone)) return bad('phone', 'Add a 10-digit mobile number.');
     for (var i = 0; i < kids.length; i++) if (!kids[i]) return bad('child' + i, kids.length === 1 ? "Add your child's name." : "Add each child's name.");
-    if (utr && utr.length < 12) return bad('utr', 'The UPI transaction ID should be at least 12 characters.');
-    if (!utr && !state.shot) return bad('utr', 'Add your UPI transaction ID or upload the payment screenshot.');
+    if (!state.shot) { $('uploadBox').classList.add('is-missing'); return bad('shot', 'Upload the screenshot of your payment.'); }
     if (state.shot && state.shot.check && state.shot.check.status === 'checking') return "Hold on, we're still checking your screenshot.";
     if (state.shot && state.shot.check && state.shot.check.status === 'fail') {
       $('shotRemove').focus();
-      return "This screenshot doesn't look like the payment you just made. Upload the right one, or remove it and type the UPI transaction ID.";
+      return "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made.";
     }
-    return { parentName: name, email: email, phone: phone, childNames: kids, utr: utr };
+    return { parentName: name, email: email, phone: phone, childNames: kids };
   }
 
   $('detailsForm').addEventListener('submit', function (e) {
@@ -454,7 +452,7 @@
         bookingId: res.bookingId, amounts: res.amounts, slotTime: state.hold.slot.time,
         parentName: v.parentName, childNames: v.childNames.join(', '),
         phone: '+91 ' + v.phone.slice(0, 5) + ' ' + v.phone.slice(5),
-        paymentRef: v.utr ? 'UPI ref ' + v.utr : 'Screenshot uploaded'
+        paymentRef: 'Screenshot uploaded'
       };
       clearInterval(timer);
       go('done');

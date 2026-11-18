@@ -127,10 +127,11 @@ function validateDetails(p, children) {
   var utr = String(p.utr || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
   var hasShot = !!(p.screenshot && p.screenshot.data);
   if (utr && (utr.length < 12 || utr.length > 35)) return { ok: false, code: 'BAD_UTR', error: 'The UPI transaction ID should be at least 12 characters.' };
-  if (!utr && !hasShot) return { ok: false, code: 'NO_PROOF', error: 'Add your UPI transaction ID or upload the payment screenshot.' };
+  // The screenshot is the only proof now: it lets the booking page check the date, time and payee.
+  if (!hasShot) return { ok: false, code: 'NO_PROOF', error: 'Upload the screenshot of your payment.' };
   if (hasShot && !/^image\/(png|jpe?g|webp|heic|heif)$/i.test(String(p.screenshot.mimeType || ''))) return { ok: false, code: 'BAD_SCREENSHOT', error: 'The screenshot must be an image (PNG, JPG or WebP).' };
   if (hasShot && p.screenshotCheck && p.screenshotCheck.status === 'fail') {
-    return { ok: false, code: 'SCREENSHOT_MISMATCH', error: "This screenshot doesn't look like the payment you just made. Upload the right one, or remove it and type the UPI transaction ID." };
+    return { ok: false, code: 'SCREENSHOT_MISMATCH', error: "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made." };
   }
   return { ok: true, value: { parentName: name, email: email, phone: phone, childNames: names, utr: utr, hasShot: hasShot } };
 }

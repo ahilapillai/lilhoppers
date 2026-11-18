@@ -92,7 +92,8 @@ function load() {
 
 const details = (n = 1, extra = {}) => ({
   parentName: 'Meera Iyer', email: 'meera@example.com', phone: '98450 12345',
-  childNames: Array.from({ length: n }, (_, i) => 'Kid ' + (i + 1)), utr: '412345678901', ...extra
+  childNames: Array.from({ length: n }, (_, i) => 'Kid ' + (i + 1)),
+  screenshot: { name: 'pay.png', mimeType: 'image/png', data: Buffer.from('fake-png').toString('base64') }, ...extra
 });
 
 function bookingRow(env, id) {
@@ -282,15 +283,14 @@ test('screenshot check result is saved to the sheet and shown to admin; a failed
   const hold2 = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
   env.call({ action: 'submitBooking', bookingId: hold2.bookingId, ...details(1, { utr: '' }), screenshot: shot });
   assert.equal(bookingRow(env, hold2.bookingId)['Screenshot Check'], 'Not checked');
-  const hold3 = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
-  env.call({ action: 'submitBooking', bookingId: hold3.bookingId, ...details(1) });
-  assert.equal(bookingRow(env, hold3.bookingId)['Screenshot Check'], '');
 });
 
-test('proof is required: UTR or screenshot', () => {
+test('proof is required: the payment screenshot (a transaction ID alone is not enough)', () => {
   const env = load();
   const hold = env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 1 });
-  assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { utr: '' }) }).code, 'NO_PROOF');
+  const noShot = env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { screenshot: undefined, utr: '412345678901' }) });
+  assert.equal(noShot.code, 'NO_PROOF');
+  assert.equal(noShot.error, 'Upload the screenshot of your payment.');
   assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { phone: '12345' }) }).code, 'BAD_PHONE');
   assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { email: 'nope' }) }).code, 'BAD_EMAIL');
   assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(2) }).code, 'BAD_CHILD_NAMES');
@@ -327,7 +327,7 @@ test('expired hold + slot now full: the submission is kept as Rejected for a ref
   const row = bookingRow(env, mine.bookingId);
   assert.equal(row['Status'], 'Rejected');
   assert.match(row['Rejection Reason'], /refund due/);
-  assert.equal(row['UPI Transaction ID'], '412345678901');
+  assert.ok(row['Screenshot URL'], 'the screenshot is kept so the refund can be checked');
 });
 
 test('expired hold but places still free: the booking goes through', () => {

@@ -181,6 +181,7 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-or::before,.bk-or::after{content:"";flex:1;height:1.5px;background:#E2D9EF}
 .bk-upload{position:relative;display:flex;align-items:center;gap:14px;padding:16px 18px;border:2px dashed #B9A8D9;border-radius:16px;background:#F7F3FC;cursor:pointer}
 .bk-upload input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.bk-upload.is-missing{border-color:#D2483A;background:#FDEEEC}
 .bk-upload:focus-within{outline:3px solid #6A47A8;outline-offset:2px}
 .bk-upload span{display:flex;flex-direction:column;gap:2px}
 .bk-upload small{font-size:14px;color:#5E5470}

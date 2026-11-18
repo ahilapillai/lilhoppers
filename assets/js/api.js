@@ -105,8 +105,8 @@
     } else if (p.action === 'submitBooking') {
       var s = find(db, p.bookingId);
       if (!s) return { ok: false, code: 'NOT_FOUND', error: 'We could not find this booking. Please start again.' };
-      if (!p.utr && !(p.screenshot && p.screenshot.data)) return { ok: false, code: 'NO_PROOF', error: 'Add your UPI transaction ID or upload the payment screenshot.' };
-      if (p.screenshot && p.screenshot.data && p.screenshotCheck && p.screenshotCheck.status === 'fail') return { ok: false, code: 'SCREENSHOT_MISMATCH', error: "This screenshot doesn't look like the payment you just made. Upload the right one, or remove it and type the UPI transaction ID." };
+      if (!(p.screenshot && p.screenshot.data)) return { ok: false, code: 'NO_PROOF', error: 'Upload the screenshot of your payment.' };
+      if (p.screenshot && p.screenshot.data && p.screenshotCheck && p.screenshotCheck.status === 'fail') return { ok: false, code: 'SCREENSHOT_MISMATCH', error: "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made." };
       if (s.status === 'Awaiting Payment' || s.status === 'Abandoned') {
         s.parentName = p.parentName; s.email = p.email; s.phone = String(p.phone).replace(/\D/g, '').slice(-10);
         s.childNames = (p.childNames || []).join(', '); s.utr = p.utr || ''; s.screenshotUrl = p.screenshot ? 'data:' + p.screenshot.mimeType + ';base64,' + p.screenshot.data : '';

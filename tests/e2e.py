@@ -30,7 +30,7 @@ threading.Thread(target=httpd.serve_forever, daemon=True).start()
 BASE = f'http://127.0.0.1:{PORT}'
 
 failures = []
-FAIL_MSG = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made, or type its UPI transaction ID above."
+FAIL_MSG = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made."
 def check(cond, msg):
     print(('PASS ' if cond else 'FAIL ') + msg)
     if not cond: failures.append(msg)
@@ -156,12 +156,12 @@ with sync_playwright() as p:
     page.fill('#parentName', 'Meera Iyer'); page.fill('#email', 'meera@example.com'); page.fill('#phone', '98450 12345')
     for i in range(3): page.fill(f'#child{i}', ['Aarav', 'Diya', 'Kabir'][i])
     page.click('#submitDetails')
-    check('transaction ID or upload' in page.inner_text('#detailsError'), 'book: proof (UTR or screenshot) required')
+    check(page.inner_text('#detailsError') == 'Upload the screenshot of your payment.' and 'is-missing' in page.get_attribute('#uploadBox', 'class'), 'book: the payment screenshot is required')
+    check(page.locator('#utr').count() == 0 and 'transaction ID' not in page.inner_text('#step-details'), 'book: no UPI transaction ID field; screenshot is the only proof')
     page.set_input_files('#shot', files=[{'name': 'pay.png', 'mimeType': 'image/png', 'buffer': cv2.imencode('.png', np.full((40, 40, 3), 200, np.uint8))[1].tobytes()}])
     page.wait_for_selector('#shotPreview:not([hidden])')
     page.wait_for_selector('#shotCheck[data-state=unreadable]', timeout=90000)
     check("couldn't read" in page.inner_text('#shotCheck').lower(), 'book: a screenshot with no text is "couldn\'t read", and can still be sent')
-    page.fill('#utr', '412345678901')
     page.screenshot(path=f'{OUT}/book-details.png', full_page=True)
     page.click('#submitDetails')
     page.wait_for_selector('#step-done:not([hidden])')
@@ -226,7 +226,7 @@ with sync_playwright() as p:
     check(st == 'fail' and msg.strip() == FAIL_MSG, "check: the 16 Nov GPay screenshot is rejected with the one short message (%s: %s)" % (st, msg[:90]))
     pg.locator('#shotPreview').screenshot(path=f'{OUT}/check-fail-old-date.png')
     pg.click('#submitDetails')
-    check("doesn't look like the payment you just made" in pg.inner_text('#detailsError'), 'check: a rejected screenshot blocks "Get my ticket"')
+    check(pg.inner_text('#detailsError') == FAIL_MSG, 'check: a rejected screenshot blocks "Get my ticket"')
     st, msg = upload('old-dark.png', old_dark)
     check(st == 'fail' and msg.strip() == FAIL_MSG, 'check: dark-mode screenshot from 40 min ago is rejected (%s: %s)' % (st, msg[:90]))
     st, msg = upload('stranger.png', stranger)
@@ -263,7 +263,7 @@ with sync_playwright() as p:
     s2 = adm.locator('.ad-slot >> nth=1').inner_text()
     check('Pending\n3' in s2 or 'PENDING\n3' in s2.upper(), 'admin: slot 2 shows 3 pending children')
     row = adm.locator('#rows tr >> nth=0').inner_text()
-    for frag in ['₹2,697', '₹199', '₹299', '₹3,195', 'Santa gift × 1', 'Meera Iyer', '412345678901', 'Pending Verification']:
+    for frag in ['₹2,697', '₹199', '₹299', '₹3,195', 'Santa gift × 1', 'Meera Iyer', 'Pending Verification']:
         check(frag in row, 'admin: row shows ' + frag)
     adm.screenshot(path=f'{OUT}/admin.png', full_page=True)
     adm.click('#rows button[data-act=verify]')
@@ -307,7 +307,7 @@ with sync_playwright() as p:
       const A = window.LH_API, out = {};
       const mk = async (n, extra, verify) => {
         const h = await A.call('createHold', { slotId: 'S2', children: n, extraParent: extra, giftQty: n });
-        await A.call('submitBooking', { bookingId: h.bookingId, parentName: 'Meera Iyer', email: 'm@example.com', phone: '9845012345', childNames: n === 2 ? ['Ira', 'Kabir'] : ['Zoya'], utr: '412345678901' });
+        await A.call('submitBooking', { bookingId: h.bookingId, parentName: 'Meera Iyer', email: 'm@example.com', phone: '9845012345', childNames: n === 2 ? ['Ira', 'Kabir'] : ['Zoya'], screenshot: { name: 'pay.png', mimeType: 'image/png', data: 'iVBORw0KGgo=' } });
         if (verify) await A.call('adminVerify', { passcode: 'demo', bookingId: h.bookingId, verifiedAmount: h.amounts.total });
         return h.bookingId; };
       out.family = await mk(2, true, true); out.solo = await mk(1, false, true); out.pending = await mk(1, false, false);

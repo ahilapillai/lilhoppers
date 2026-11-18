@@ -7,7 +7,7 @@ const at = (s) => new Date(s); // local time
 const check = (text, now, extra) => SC.analyze(text, Object.assign({}, OPTS, { now: at(now) }, extra || {}));
 
 // Text exactly as Tesseract read Ahila's GPay screenshot.
-const FAIL = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made, or type its UPI transaction ID above.";
+const FAIL = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made.";
 const GPAY = 'Paid to\nAHILA PICHAIPILLAI\n© Banking name: AHILA PICHAIPILLAI\n16 November 2026, 8:53am\n';
 
 test("Ahila's sample screenshot (16 Nov) fails on 17 Nov", () => {

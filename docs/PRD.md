@@ -85,7 +85,7 @@ Price and time copy is updated to ₹899 per ticket and the three slots. Every "
    - The UPI ID with a Copy button on its right, an "Open UPI app" button on phones, and a **Payment done** button.
    - Parents can still change the slot, children or add-ons while paying. The total, the hold and the QR update in place (same booking ID); the QR is blurred with "Updating your total…" until the new one is ready. If the change doesn't fit (not enough places), the QR is hidden, the message says why, and the earlier hold is kept until they tap Pay again.
    - The QR uses `upi://pay?pa=ahilapil.26-1@okicici&pn=Lil Hoppers&am=<total>.00&cu=INR&tn=<booking ID>`, so the booking ID appears in the payment note.
-2. **Details (ticket):** parent's name, email, phone (10-digit Indian mobile), each child's name, and proof of payment: the UPI transaction ID (12-digit UTR) **or** a screenshot. At least one is required.
+2. **Details (ticket):** parent's name, email, phone (10-digit Indian mobile), each child's name, and proof of payment: the **payment screenshot**, which is required. There is no transaction-ID field: the screenshot is the only proof, so every booking gets the automatic date, time and payee check.
    - **Screenshot check.** As soon as a screenshot is chosen, the page reads its text and checks that it shows:
      1. the payee **AHILA PICHAIPILLAI** (or the UPI ID `ahilapil.26-1@okicici`), allowing for a couple of misread letters;
      2. **today's date**;
@@ -94,7 +94,7 @@ Price and time copy is updated to ₹899 per ticket and the three slots. Every "
      | Result | What the parent sees | Can they continue? |
      |---|---|---|
      | Passed | "Checked: paid to AHILA PICHAIPILLAI today at 1:42 PM." | Yes |
-     | Failed: wrong date, time more than 15 minutes off, or a different payee | What the screenshot shows (for example "from 16 Nov 2026, 8:53 AM, not today") and a request to upload the right screenshot or type the UPI transaction ID instead | No, not with that screenshot |
+     | Failed: wrong date, time more than 15 minutes off, or a different payee | "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made." (the details are kept for the admin) | No, not with that screenshot |
      | Couldn't read (blurry, cropped, or the reader didn't load) | "We couldn't read the date and time… we'll check it by hand" | Yes, flagged for the admin |
 
      Dates are read in common app formats (16 November 2026, 16 Nov, Nov 16 2026, 16/11/2026, Today), and times as 8:53am, 08:53 PM or 13:44:10. The phone's status-bar clock is ignored. The amount is also looked for and reported to the admin, but doesn't block the booking.
@@ -139,7 +139,7 @@ The admin page is protected by a passcode stored on the server. It shows:
   - **Total expected**
   - **Actual verified amount**
 
-  Each booking also shows the parent, contact details, children's names, UTR, a screenshot link (Google Drive), the **screenshot check** result (Screenshot OK / Couldn't read / Not checked, what date and time it shows, minutes before upload, and whether the amount was seen), statuses and timestamps. Bookings can be filtered by status and slot, and searched.
+  Each booking also shows the parent, contact details, children's names, a screenshot link (and the UTR on older bookings that gave one) (Google Drive), the **screenshot check** result (Screenshot OK / Couldn't read / Not checked, what date and time it shows, minutes before upload, and whether the amount was seen), statuses and timestamps. Bookings can be filtered by status and slot, and searched.
 - **Actions:**
   - **Verify:** the admin enters the amount actually received (defaults to the expected amount, and warns if they differ). This sets the booking to Verified and sends the confirmation email.
   - **Reject:** requires a reason.

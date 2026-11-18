@@ -34,7 +34,8 @@
     return plural(children, 'kid', 'kids') + ' + ' + plural(children + (extraParent ? 1 : 0), 'parent', 'parents');
   }
   function giftQty() { return state.giftOn ? state.giftQty : 0; }
-  function localAmounts() { return P.computeAmounts(cfg.PRICES, state.children, state.extraParent, giftQty()); }
+  // The server's prices win (from 'availability'), so the summary always matches the amount in the QR.
+  function localAmounts() { return P.computeAmounts(state.prices || cfg.PRICES, state.children, state.extraParent, giftQty()); }
   function slotById(id) { return state.slots.filter(function (s) { return s.id === id; })[0]; }
   function showError(el, msg) { el.textContent = msg || ''; el.hidden = !msg; }
 
@@ -42,6 +43,7 @@
     var rows = [[plural(a.children, 'kid', 'kids') + ' + ' + plural(a.children, 'parent', 'parents'), P.rupees(a.ticketSubtotal)]];
     if (a.extraParent) rows.push(['Extra parent', P.rupees(a.extraParentCharge)]);
     if (a.giftQty) rows.push(['Gift from Santa × ' + a.giftQty, P.rupees(a.giftSubtotal)]);
+    if (a.bookingFee) rows.push(['Booking & support fee', P.rupees(a.bookingFee)]);
     dl.innerHTML = '';
     rows.forEach(function (r) {
       var d = document.createElement('div');
@@ -93,6 +95,7 @@
         return;
       }
       state.slots = res.slots;
+      if (res.prices) state.prices = res.prices;
       var sel = slotById(state.slotId);
       if (sel && sel.soldOut && !mySlot(sel.id)) state.slotId = null;
       renderChoose();

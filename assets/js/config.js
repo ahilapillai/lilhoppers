@@ -4,7 +4,8 @@ window.LH_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxpT8i_y2TjPHl-6cMQ4o7_Le266Rb6W945TDDivvx3KYQw7uHRS7YPDTIHNLcNycSs/exec',
   UPI_ID: 'ahilapil.26-1@okicici',
   UPI_PAYEE: 'Lil Hoppers',
-  PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299 },
+  // BOOKING_FEE: the flat 'Booking & support fee' added once per booking.
+  PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39 },
   MAX_CHILDREN: 10,
   HOLD_MINUTES: 20,
   EVENT_DATE: 'Sat, 12 Dec 2026',

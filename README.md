@@ -43,7 +43,7 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 - **Payment status stays Pending** until an admin verifies it.
   - On submission the parent automatically gets the "payment being checked" email.
   - When an admin verifies the payment, the parent gets the confirmation email.
-- **Changing prices:** update both `CONFIG.PRICES` in `apps-script/Code.gs` and `PRICES` in `assets/js/config.js`.
+- **Changing prices or the ₹39 booking & support fee (`BOOKING_FEE`):** update both `CONFIG.PRICES` in `apps-script/Code.gs` and `PRICES` in `assets/js/config.js`, and the line under "₹899 a ticket." on the homepage. The booking page takes the prices from the backend, so its summary always matches the QR amount.
 - **Changing capacities:** use the admin page, or edit the **Slots** tab.
 - **Rejecting a booking, even a verified one:** click **Reject** on the admin page, or pick **Rejected** in the booking's **Status** dropdown in the sheet. Its places go back on sale straight away, and the parent gets an email saying the payment couldn't be verified, asking them to email the payment screenshot to hello.lilhoppers@gmail.com (sent once per booking).
 - **Confirming a booking:** click **Send confirmation** on the admin page, or pick **Verified** in its **Status** dropdown in the sheet. Either way the parent gets the confirmation email (only once), and the amount received is filled in as the expected total unless you've typed one.

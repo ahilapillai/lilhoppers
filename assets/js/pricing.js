@@ -4,10 +4,11 @@
     var ticketSubtotal = children * prices.CHILD_TICKET;
     var extraParentCharge = extraParent ? prices.EXTRA_PARENT : 0;
     var giftSubtotal = giftQty * prices.SANTA_GIFT;
+    var bookingFee = prices.BOOKING_FEE || 0; // flat, once per booking
     return {
       children: children, ticketSubtotal: ticketSubtotal, extraParent: !!extraParent,
-      extraParentCharge: extraParentCharge, giftQty: giftQty, giftSubtotal: giftSubtotal,
-      total: ticketSubtotal + extraParentCharge + giftSubtotal
+      extraParentCharge: extraParentCharge, giftQty: giftQty, giftSubtotal: giftSubtotal, bookingFee: bookingFee,
+      total: ticketSubtotal + extraParentCharge + giftSubtotal + bookingFee
     };
   }
   function rupees(n) {

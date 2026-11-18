@@ -20,7 +20,8 @@ var CONFIG = {
   HOLD_MINUTES: 20,
   MAX_CHILDREN: 10,
   MAX_SCREENSHOT_BYTES: 5 * 1024 * 1024,
-  PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299 },
+  // BOOKING_FEE: the flat 'Booking & support fee' added once per booking. Keep in step with assets/js/config.js.
+  PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39 },
   SCREENSHOT_FOLDER: 'Lil Hoppers – Payment screenshots',
   // The booking page reads each payment screenshot and only accepts it if it shows one of these names
   // (or the UPI ID), today's date and a time within this many minutes of upload. See assets/js/shotcheck.js.
@@ -62,6 +63,7 @@ function computeAmounts(children, extraParent, giftQty) {
   var ticketSubtotal = children * p.CHILD_TICKET;
   var extraParentCharge = extraParent ? p.EXTRA_PARENT : 0;
   var giftSubtotal = giftQty * p.SANTA_GIFT;
+  var bookingFee = p.BOOKING_FEE || 0; // flat, once per booking
   return {
     children: children,
     ticketSubtotal: ticketSubtotal,
@@ -69,8 +71,19 @@ function computeAmounts(children, extraParent, giftQty) {
     extraParentCharge: extraParentCharge,
     giftQty: giftQty,
     giftSubtotal: giftSubtotal,
-    total: ticketSubtotal + extraParentCharge + giftSubtotal
+    bookingFee: bookingFee,
+    total: ticketSubtotal + extraParentCharge + giftSubtotal + bookingFee
   };
+}
+
+/** Amounts for a saved booking. The fee is whatever its saved total includes, so bookings made before the fee keep their old totals. */
+function storedAmounts_(b) {
+  var a = computeAmounts(Number(b.children), b.extraParent === 'Yes', Number(b.giftQty));
+  var items = a.ticketSubtotal + a.extraParentCharge + a.giftSubtotal;
+  var saved = Number(b.expectedTotal);
+  if (b.expectedTotal !== '' && b.expectedTotal !== undefined && b.expectedTotal !== null && isFinite(saved)) a.bookingFee = Math.max(0, saved - items);
+  a.total = items + a.bookingFee;
+  return a;
 }
 
 function toInt(v) {
@@ -352,7 +365,7 @@ function publicResult_(b) {
     status: b.status,
     paymentStatus: b.paymentStatus,
     slot: { id: b.slotId, time: b.slotTime },
-    amounts: computeAmounts(Number(b.children), b.extraParent === 'Yes', Number(b.giftQty))
+    amounts: storedAmounts_(b)
   };
 }
 
@@ -768,7 +781,7 @@ function sendMail_(to, subject, html, inlineImages) {
 }
 
 function bookingTable_(b, verified) {
-  var a = computeAmounts(Number(b.children), b.extraParent === 'Yes', Number(b.giftQty));
+  var a = storedAmounts_(b);
   var rows = [
     ['Booking ID', '<strong>' + escapeHtml_(b.bookingId) + '</strong>'],
     ['Slot', escapeHtml_(CONFIG.EVENT_DATE + ', ' + b.slotTime)],
@@ -777,6 +790,7 @@ function bookingTable_(b, verified) {
   ];
   if (a.extraParent) rows.push(['Extra parent', rupees(a.extraParentCharge)]);
   if (a.giftQty) rows.push(['Personalised gift from Santa (' + a.giftQty + ' × ' + rupees(CONFIG.PRICES.SANTA_GIFT) + ')', rupees(a.giftSubtotal)]);
+  if (a.bookingFee) rows.push(['Booking &amp; support fee', rupees(a.bookingFee)]);
   rows.push(['<strong>Total</strong>', '<strong>' + rupees(a.total) + '</strong>']);
   if (verified) rows.push(['Amount received', rupees(b.verifiedAmount)]);
   return '<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:15px">' + rows.map(function (r) {

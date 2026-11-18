@@ -152,6 +152,9 @@
     var rows = '<dt>Tickets ' + b.children + ' × ' + P.rupees(data.prices.CHILD_TICKET) + '</dt><dd>' + money(b.ticketSubtotal) + '</dd>' +
       '<dt>Extra parent</dt><dd>' + (b.extraParent === 'Yes' ? money(b.extraParentCharge) : '—') + '</dd>' +
       '<dt>Santa gift × ' + (Number(b.giftQty) || 0) + '</dt><dd>' + money(b.giftSubtotal) + '</dd>';
+    // The booking & support fee is whatever the saved total includes beyond the items (none on bookings made before the fee).
+    var fee = Number(b.expectedTotal) - (Number(b.ticketSubtotal) || 0) - (Number(b.extraParentCharge) || 0) - (Number(b.giftSubtotal) || 0);
+    if (fee > 0) rows += '<dt>Booking &amp; support fee</dt><dd>' + money(fee) + '</dd>';
     return '<dl class="ad-break">' + rows + '</dl>';
   }
 

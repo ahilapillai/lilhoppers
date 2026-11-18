@@ -105,11 +105,12 @@ function bookingRow(env, id) {
 
 test('price examples from the PRD', () => {
   const { ctx } = load();
-  assert.equal(ctx.computeAmounts(1, false, 1).total, 1198);
-  assert.equal(ctx.computeAmounts(1, false, 0).total, 899);
-  assert.equal(ctx.computeAmounts(1, true, 1).total, 1397);
+  // Every booking adds the flat ₹39 booking & support fee.
+  assert.equal(ctx.computeAmounts(1, false, 1).total, 1237);
+  assert.equal(ctx.computeAmounts(1, false, 0).total, 938);
+  assert.equal(ctx.computeAmounts(1, true, 1).total, 1436);
   const three = ctx.computeAmounts(3, true, 2);
-  assert.deepEqual([three.ticketSubtotal, three.extraParentCharge, three.giftSubtotal, three.total], [2697, 199, 598, 3494]);
+  assert.deepEqual([three.ticketSubtotal, three.extraParentCharge, three.giftSubtotal, three.bookingFee, three.total], [2697, 199, 598, 39, 3533]);
 });
 
 test('setup creates slots 32 / 33 / 35 = 100 and an admin passcode', () => {
@@ -132,11 +133,12 @@ test('server computes the amount and the UPI link, ignoring anything the browser
   const env = load();
   const res = env.call({ action: 'createHold', slotId: 'S1', children: 1, extraParent: true, giftQty: 1, total: 5 });
   assert.equal(res.ok, true);
-  assert.equal(res.amounts.total, 1397);
-  assert.match(res.upi.uri, /^upi:\/\/pay\?pa=ahilapil\.26-1@okicici&pn=Lil%20Hoppers&am=1397\.00&cu=INR&tn=LH-/);
+  assert.equal(res.amounts.total, 1436);
+  assert.equal(res.amounts.bookingFee, 39);
+  assert.match(res.upi.uri, /^upi:\/\/pay\?pa=ahilapil\.26-1@okicici&pn=Lil%20Hoppers&am=1436\.00&cu=INR&tn=LH-/);
   const row = bookingRow(env, res.bookingId);
   assert.equal(row['Status'], 'Awaiting Payment');
-  assert.equal(row['Expected Total'], 1397);
+  assert.equal(row['Expected Total'], 1436);
   assert.equal(row['Extra Parent'], 'Yes');
   assert.equal(row['Santa Gift Qty'], 1);
 });
@@ -199,7 +201,7 @@ test('changing the selection releases the previous hold', () => {
   assert.equal(second.ok, true);
   assert.equal(second.bookingId, first.bookingId, 'editing keeps the same booking');
   const row = bookingRow(env, first.bookingId);
-  assert.deepEqual([row['Status'], row['Children'], row['Expected Total']], ['Awaiting Payment', 1, 1198]);
+  assert.deepEqual([row['Status'], row['Children'], row['Expected Total']], ['Awaiting Payment', 1, 1237]);
   assert.equal(env.sheets.Bookings.data.filter((r) => r[0] === first.bookingId).length, 1, 'no extra row');
 });
 
@@ -211,7 +213,7 @@ test('editing a hold counts its own places only once, and a change that does not
   // Same 3 places, now with gifts: fits, because its own places aren't counted twice.
   const edited = env.call({ action: 'createHold', slotId: 'S1', children: 3, giftQty: 3, previousBookingId: mine.bookingId });
   assert.equal(edited.ok, true);
-  assert.equal(edited.amounts.total, 3 * 899 + 3 * 299);
+  assert.equal(edited.amounts.total, 3 * 899 + 3 * 299 + 39);
   // 4 children won't fit: refused, and the 3-child hold is still there.
   const tooMany = env.call({ action: 'createHold', slotId: 'S1', children: 4, giftQty: 0, previousBookingId: mine.bookingId });
   assert.equal(tooMany.code, 'NOT_ENOUGH_PLACES');
@@ -256,7 +258,8 @@ test('submitting proof: saves details, screenshot to Drive, sets Pending, sends 
   assert.equal(env.mails[0].replyTo, 'hello.lilhoppers@gmail.com');
   assert.match(env.mails[0].subject, /payment being checked/);
   assert.match(env.mails[0].htmlBody, /not confirmed yet/);
-  assert.match(env.mails[0].htmlBody, /₹2,097/);
+  assert.match(env.mails[0].htmlBody, /Booking &amp; support fee<\/td><td[^>]*>₹39/);
+  assert.match(env.mails[0].htmlBody, /₹2,136/);
 });
 
 test('screenshot check result is saved to the sheet and shown to admin; a failed check is refused', () => {
@@ -366,7 +369,7 @@ test('admin list carries the itemized payment breakdown for every booking', () =
   const b = env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE }).bookings[0];
   assert.deepEqual(
     [b.ticketSubtotal, b.extraParentCharge, b.giftQty, b.giftSubtotal, b.expectedTotal, b.verifiedAmount],
-    [2697, 199, 2, 598, 3494, '']
+    [2697, 199, 2, 598, 3533, '']
   );
 });
 
@@ -379,7 +382,10 @@ test('wrong passcodes lock the admin out after 10 tries', () => {
 test('browser price maths (assets/js/pricing.js) matches the backend for every combination', () => {
   const { ctx } = load();
   const P = require('../assets/js/pricing.js');
-  const prices = { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299 };
+  // The site's prices (assets/js/config.js) must be the backend's prices.
+  const win = {}; new Function('window', require('fs').readFileSync(require('path').join(__dirname, '..', 'assets', 'js', 'config.js'), 'utf8'))(win);
+  const prices = win.LH_CONFIG.PRICES;
+  assert.deepEqual({ ...prices }, JSON.parse(JSON.stringify(ctx.CONFIG.PRICES)));
   for (let n = 1; n <= 10; n++) for (const x of [false, true]) for (let g = 0; g <= n; g++) {
     assert.deepEqual(JSON.parse(JSON.stringify(P.computeAmounts(prices, n, x, g))), JSON.parse(JSON.stringify(ctx.computeAmounts(n, x, g))));
   }
@@ -470,7 +476,7 @@ test('setting Status to Verified in the sheet sends the confirmation email once'
   assert.equal(env.mails[1].to, 'meera@example.com');
   const row = bookingRow(env, hold.bookingId);
   assert.equal(row['Payment Status'], 'Verified');
-  assert.equal(row['Verified Amount'], 1198);
+  assert.equal(row['Verified Amount'], 1237);
   assert.ok(row['Verified At'] && typeof row['Verified At'].getTime === 'function');
   assert.ok(row['Confirmation Email Sent At'] && typeof row['Confirmation Email Sent At'].getTime === 'function');
   editStatus(env, hold.bookingId, 'Verified');
@@ -626,4 +632,16 @@ test('check-in: single parent, unconfirmed, rejected, unknown and bad codes', ()
   assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: 'LH-ZZZZZ' }).code, 'NOT_FOUND');
   assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: 'hello' }).code, 'BAD_ID');
   assert.equal(env.call({ action: 'checkinLookup', passcode: 'wrong', bookingId: solo }).code, 'UNAUTHORISED');
+});
+
+test('bookings made before the booking & support fee keep their old totals in emails', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 1 });
+  const sh = env.sheets.Bookings.data;
+  sh.find((r) => r[0] === hold.bookingId)[sh[0].indexOf('Expected Total')] = 1198; // saved before the fee existed
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1) });
+  const body = env.mails[0].htmlBody;
+  assert.match(body, /₹1,198/);
+  assert.doesNotMatch(body, /support fee/);
+  assert.equal(env.call({ action: 'adminVerify', passcode: env.props.ADMIN_PASSCODE, bookingId: hold.bookingId, verifiedAmount: 1198 }).ok, true);
 });

@@ -51,6 +51,7 @@ Rules:
 | Child ticket | ₹899 per child | Includes entry for one parent. At least 1, at most 10 per booking. |
 | Extra Parent | ₹199 | Optional. **Unchecked** by default. Maximum one per booking. |
 | Personalised Gift from Santa | ₹299 per child | Labelled **"Optional"**. **Unchecked** by default. Parents tick it to add it. With more than one child, the parent picks the gift quantity from 1 up to the number of children (default: one per child). |
+| Booking & support fee | ₹39 per booking | **Always added**, once per booking (not per child). Shown as its own line in the order summary from the start, next to the ticket price on the homepage ("Plus a ₹39 booking & support fee per booking."), and in the emails. Bookings made before the fee keep their original totals. |
 
 - The price is shown beside every add-on.
 - The total recalculates immediately whenever the number of children or any add-on changes.
@@ -60,9 +61,9 @@ Price checks (must always hold):
 
 | Booking | Total |
 |---|---|
-| 1 child, no add-ons (default) | ₹899 |
-| 1 child + Santa gift | ₹1,198 |
-| 1 child + Santa gift + extra parent | ₹1,397 |
+| 1 child, no add-ons (default) | ₹899 + ₹39 fee = ₹938 |
+| 1 child + Santa gift | ₹1,237 |
+| 1 child + Santa gift + extra parent | ₹1,436 |
 
 ## 5. Customer journey
 

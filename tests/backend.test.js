@@ -451,13 +451,48 @@ test('a booking already confirmed on the admin page gets no extra email from the
   assert.equal(env.mails.length, 2);
 });
 
-test('setting Status to Rejected in the sheet marks the payment rejected and sends nothing', () => {
+test('setting Status to Rejected in the sheet marks the payment rejected and emails the parent once', () => {
   const env = load();
   const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 });
   env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
   editStatus(env, hold.bookingId, 'Rejected');
   assert.equal(bookingRow(env, hold.bookingId)['Payment Status'], 'Rejected');
-  assert.equal(env.mails.length, 1);
+  assert.equal(env.mails.length, 2);
+  assert.match(env.mails[1].subject, /couldn't verify your payment/);
+  assert.match(env.mails[1].htmlBody, /hello\.lilhoppers@gmail\.com/);
+  assert.equal(env.mails[1].to, 'meera@example.com');
+  editStatus(env, hold.bookingId, 'Rejected');
+  assert.equal(env.mails.length, 2, 'no second email');
+});
+
+test('rejecting on the admin page emails the parent; a hold with no details gets no email', () => {
+  const env = load();
+  const P = env.props.ADMIN_PASSCODE;
+  const hold = env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 1 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  const res = env.call({ action: 'adminReject', passcode: P, bookingId: hold.bookingId, reason: 'No payment found' });
+  assert.equal(res.emailSent, true);
+  assert.equal(env.mails.length, 2);
+  assert.match(env.mails[1].subject, /couldn't verify your payment \(LH-/);
+  assert.match(env.mails[1].htmlBody, /email a screenshot of your payment/);
+  assert.doesNotMatch(env.mails[1].htmlBody, /No payment found/, 'the internal reason is not shown to the parent');
+  assert.ok(bookingRow(env, hold.bookingId)['Rejection Email Sent At']);
+  const bare = env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 });
+  const r2 = env.call({ action: 'adminReject', passcode: P, bookingId: bare.bookingId, reason: 'test' });
+  assert.equal(r2.ok, true);
+  assert.equal(r2.emailSent, false);
+  assert.equal(r2.warning, undefined);
+  assert.equal(env.mails.length, 2);
+});
+
+test('the automatic sold-out rejection does not send the "could not verify" email', () => {
+  const env = load();
+  const mine = env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 });
+  const sh = env.sheets.Bookings.data;
+  sh.find((r) => r[0] === mine.bookingId)[sh[0].indexOf('Hold Expires At')] = new Date(Date.now() - 1000);
+  for (let i = 0; i < 31; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  assert.equal(env.call({ action: 'submitBooking', bookingId: mine.bookingId, ...details(2) }).code, 'FULL_AFTER_EXPIRY');
+  assert.equal(env.mails.filter((m) => /couldn't verify/.test(m.subject)).length, 0);
 });
 
 test('edits to other columns or other sheets are ignored', () => {

@@ -46,7 +46,7 @@ var BOOKING_HEADERS = [
   'Booking ID', 'Created At', 'Slot Time', 'Children', 'Child Names', 'Parent Name', 'Email', 'Phone',
   'Extra Parent', 'Extra Parent Charge', 'Ticket Subtotal', 'Santa Gift Qty', 'Santa Gift Subtotal', 'Expected Total',
   'UPI Transaction ID', 'Screenshot URL', 'Screenshot Check', 'Screenshot Shows', 'Screenshot Check Note', 'Status', 'Payment Status', 'Verified Amount', 'Verified At',
-  'Hold Expires At', 'Submitted At', 'Pending Email Sent At', 'Confirmation Email Sent At', 'Rejection Reason', 'Admin Notes'
+  'Hold Expires At', 'Submitted At', 'Pending Email Sent At', 'Confirmation Email Sent At', 'Rejection Reason', 'Admin Notes', 'Rejection Email Sent At'
 ];
 
 var SLOT_HEADERS = ['Slot ID', 'Label', 'Time', 'Capacity'];
@@ -401,12 +401,30 @@ function apiAdminVerify(p) {
 function apiAdminReject(p) {
   var reason = String(p.reason || '').trim();
   if (!reason) return { ok: false, code: 'NO_REASON', error: 'Add a reason for rejecting.' };
-  return withLock(function () {
+  var outcome = withLock(function () {
     var row = findBooking_(readBookings(), String(p.bookingId || ''));
     if (!row) return { ok: false, code: 'NOT_FOUND', error: 'Booking not found.' };
     updateBooking_(row.rowIndex, { 'Status': STATUS.REJECTED, 'Payment Status': PAYMENT.REJECTED, 'Rejection Reason': reason });
     return { ok: true };
   });
+  if (!outcome.ok) return outcome;
+  var sent = sendRejectionOnce_(String(p.bookingId));
+  return sent === false ? { ok: true, emailSent: false, warning: 'Rejected, but the email to the parent could not be sent.' } : { ok: true, emailSent: sent === true };
+}
+
+/** Emails the parent that their payment couldn't be verified, once per booking. Returns true (sent), false (failed) or null (nothing to send). */
+function sendRejectionOnce_(bookingId) {
+  var row = findBooking_(readBookings(), bookingId);
+  if (!row || !row.b.email || row.b.rejectionEmailSentAt) return null;
+  try {
+    sendRejectionEmail_(row.b);
+    updateBooking_(row.rowIndex, { 'Rejection Email Sent At': new Date() });
+    return true;
+  } catch (err) {
+    console.error('Rejection email failed for ' + bookingId + ': ' + err);
+    updateBooking_(row.rowIndex, { 'Admin Notes': appendNote_(row.b.adminNotes, 'Rejection email failed: ' + err) });
+    return false;
+  }
 }
 
 function apiAdminUpdateCapacity(p) {
@@ -438,7 +456,7 @@ var KEY_BY_HEADER = {
   'Screenshot Check Note': 'screenshotCheckNote', 'Status': 'status', 'Payment Status': 'paymentStatus', 'Verified Amount': 'verifiedAmount',
   'Verified At': 'verifiedAt', 'Hold Expires At': 'holdExpiresAt', 'Submitted At': 'submittedAt',
   'Pending Email Sent At': 'pendingEmailSentAt', 'Confirmation Email Sent At': 'confirmationEmailSentAt',
-  'Rejection Reason': 'rejectionReason', 'Admin Notes': 'adminNotes'
+  'Rejection Reason': 'rejectionReason', 'Admin Notes': 'adminNotes', 'Rejection Email Sent At': 'rejectionEmailSentAt'
 };
 
 function spreadsheet_() {
@@ -598,6 +616,20 @@ function sendConfirmationEmail_(b) {
   sendMail_(b.email, subject, html);
 }
 
+function sendRejectionEmail_(b) {
+  var subject = "We couldn't verify your payment (" + b.bookingId + ')';
+  var html = emailShell_(
+    'Hi ' + escapeHtml_(firstName_(b.parentName)) + ',',
+    "<p>We couldn't verify the payment for your " + escapeHtml_(CONFIG.EVENT_NAME) + ' booking, so it is not confirmed.</p>' +
+      '<p style="padding:12px 14px;background:#FDEEEC;border-radius:10px;color:#9F2A1E"><strong>Please email a screenshot of your payment to ' +
+      '<a href="mailto:' + CONFIG.SENDER_EMAIL + '" style="color:#9F2A1E">' + CONFIG.SENDER_EMAIL + '</a></strong>, with your booking ID ' +
+      escapeHtml_(b.bookingId) + '. You can also just reply to this email.</p>' +
+      bookingTable_(b, false) +
+      '<p>Payment reference we received: <strong>' + escapeHtml_(b.utr || 'Screenshot uploaded') + '</strong></p>'
+  );
+  sendMail_(b.email, subject, html);
+}
+
 function sendMail_(to, subject, html) {
   var me = Session.getEffectiveUser().getEmail();
   if (me && me.toLowerCase() !== CONFIG.SENDER_EMAIL) {
@@ -706,7 +738,8 @@ function setup() {
 /**
  * Runs when the Bookings sheet is edited by hand.
  * Status set to Verified: the payment is marked verified and the parent gets the confirmation email (once).
- * Status set to Rejected: the payment is marked rejected. Places are counted from Status, so they go back on sale.
+ * Status set to Rejected: the payment is marked rejected and the parent is emailed that it couldn't be verified (once).
+ * Places are counted from Status, so a rejected booking's places go back on sale.
  */
 function onBookingEdit(e) {
   if (!e || !e.range) return;
@@ -718,7 +751,7 @@ function onBookingEdit(e) {
   if (statusCol < c0 || statusCol > c1) return;
   var r0 = Math.max(e.range.getRow(), 2), r1 = e.range.getRow() + e.range.getNumRows() - 1;
 
-  var toConfirm = [];
+  var toConfirm = [], toReject = [];
   var outcome = withLock(function () {
     readBookings().forEach(function (row) {
       if (row.rowIndex < r0 || row.rowIndex > r1) return;
@@ -729,14 +762,16 @@ function onBookingEdit(e) {
           updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.VERIFIED, 'Verified Amount': amount, 'Verified At': new Date() });
         }
         if (!b.confirmationEmailSentAt && b.email) toConfirm.push(String(b.bookingId));
-      } else if (b.status === STATUS.REJECTED && b.paymentStatus !== PAYMENT.REJECTED) {
-        updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.REJECTED });
+      } else if (b.status === STATUS.REJECTED) {
+        if (b.paymentStatus !== PAYMENT.REJECTED) updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.REJECTED });
+        if (!b.rejectionEmailSentAt && b.email) toReject.push(String(b.bookingId));
       }
     });
     return { ok: true };
   });
   if (!outcome.ok) return;
 
+  toReject.forEach(function (id) { sendRejectionOnce_(id); });
   var rows = readBookings();
   toConfirm.forEach(function (id) {
     var row = findBooking_(rows, id);

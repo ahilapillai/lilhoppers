@@ -245,7 +245,7 @@
       btn.disabled = false;
       if (!res.ok) { show($('rejectError'), res.error); return; }
       $('rejectDlg').close();
-      toast(current.bookingId + ' rejected');
+      toast(current.bookingId + ' rejected' + (res.emailSent ? ', email sent' : '') + (res.warning ? '. ' + res.warning : ''));
       load(true);
     });
   });

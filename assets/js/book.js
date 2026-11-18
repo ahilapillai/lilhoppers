@@ -12,7 +12,7 @@
 
   var state = {
     step: 'choose', slots: [], slotId: null, children: 1, extraParent: false,
-    giftOn: true, giftQty: 1, giftTouched: false, photoOk: false, hold: null, result: null, shot: null
+    giftOn: true, giftQty: 1, giftTouched: false, photoOk: true, hold: null, result: null, shot: null
   };
   try {
     var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');

@@ -16,8 +16,8 @@
     const C = (hex) => new T.Color(hex);
     const scene = new T.Scene();
     const camera = new T.PerspectiveCamera(27, 1142 / 1378, 0.1, 100);
-    camera.position.set(0, 3.1, 15.6);
-    camera.lookAt(0, 3.05, 0);
+    camera.position.set(0, 3.15, 16.9);
+    camera.lookAt(0, 2.95, 0);
 
     /* Soft studio environment so gold and baubles get real highlights. */
     const pmrem = new T.PMREMGenerator(renderer);
@@ -175,7 +175,7 @@
       [[0.03, -0.04], [0.0, -0.09], [-0.08, -0.12], [-0.2, -0.1]].forEach((p) => prof.push(new T.Vector2(t.R + p[0] * k, p[1] * k)));
       prof.push(new T.Vector2(t.R * 0.5, -0.06 * k));
       prof.push(new T.Vector2(0.03, -0.02));
-      const g = new T.LatheGeometry(prof, 150, Math.PI, Math.PI * 2);
+      const g = new T.LatheGeometry(prof, 240, Math.PI, Math.PI * 2);
       const pos = g.attributes.position;
       const v = new T.Vector3();
       for (let i = 0; i < pos.count; i++) {
@@ -195,7 +195,7 @@
       return g;
     };
     const dropGeo = (() => {
-      const g = new T.SphereGeometry(1, 24, 16);
+      const g = new T.SphereGeometry(1, 32, 22);
       const pos = g.attributes.position;
       for (let i = 0; i < pos.count; i++) {
         const y = pos.getY(i);
@@ -460,7 +460,7 @@
       const t = clock.elapsedTime;
       const ease = Math.min(1, dt * 4);
       rotY += ((this._mx || 0) * 2.4 - rotY) * ease;
-      rotX += ((this._my || 0) * 0.12 - rotX) * ease;
+      rotX += ((this._my || 0) * 0.07 - rotX) * ease;
       // Redraw only while the tree is turning; otherwise a few times a second for the star's glow.
       const moving = Math.abs(rotY - lastY) > 1e-4 || Math.abs(rotX - lastX) > 1e-5 || lastY !== lastY;
       if (!moving && t - lastDraw < (still || slow ? 1e9 : 0.12)) return;
@@ -471,8 +471,9 @@
       const t0 = performance.now();
       renderer.render(scene, camera);
       // On a slow device, drop to standard resolution and stop idle redraws.
-      cost = cost * 0.8 + (performance.now() - t0) * 0.2;
-      if (++frames > 5 && cost > 45 && !slow) {
+      // Skip the first frames (shaders compile then), then watch the steady cost.
+      if (++frames > 40) cost = cost * 0.9 + (performance.now() - t0) * 0.1;
+      if (frames > 100 && cost > 60 && !slow && renderer.getPixelRatio() > 1) {
         slow = true;
         renderer.setPixelRatio(1);
         resize();

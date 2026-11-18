@@ -7,6 +7,7 @@ const at = (s) => new Date(s); // local time
 const check = (text, now, extra) => SC.analyze(text, Object.assign({}, OPTS, { now: at(now) }, extra || {}));
 
 // Text exactly as Tesseract read Ahila's GPay screenshot.
+const FAIL = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made, or type its UPI transaction ID above.";
 const GPAY = 'Paid to\nAHILA PICHAIPILLAI\n© Banking name: AHILA PICHAIPILLAI\n16 November 2026, 8:53am\n';
 
 test("Ahila's sample screenshot (16 Nov) fails on 17 Nov", () => {
@@ -14,7 +15,8 @@ test("Ahila's sample screenshot (16 Nov) fails on 17 Nov", () => {
   assert.strictEqual(r.status, 'fail');
   assert.deepStrictEqual(r.problems, ['OLD_DATE']);
   assert.strictEqual(r.shows, '16 Nov 2026, 8:53 AM');
-  assert.match(r.message, /from 16 Nov 2026, 8:53 AM, not today/);
+  assert.strictEqual(r.message, FAIL);
+  assert.match(r.summary, /from 16 Nov 2026, 8:53 AM, not today/);
   assert.strictEqual(r.payeeOk, true);
 });
 
@@ -32,7 +34,8 @@ test('15 minutes is fine, 16 is not', () => {
   const r = check(GPAY, '2026-11-16T09:09:00');
   assert.strictEqual(r.status, 'fail');
   assert.deepStrictEqual(r.problems, ['TIME_EARLY']);
-  assert.match(r.message, /16 minutes ago/);
+  assert.strictEqual(r.message, FAIL);
+  assert.match(r.summary, /16 minutes ago/);
 });
 
 test('a payment time later than now fails', () => {
@@ -44,7 +47,7 @@ test('today and right time but someone else paid fails', () => {
   const r = check('Paid to\nRAVI KUMAR\n16 November 2026, 8:53am', '2026-11-16T08:58:00');
   assert.strictEqual(r.status, 'fail');
   assert.deepStrictEqual(r.problems, ['NO_PAYEE']);
-  assert.match(r.message, /doesn't look like a payment to Lil' Hoppers/);
+  assert.strictEqual(r.message, FAIL);
   assert.doesNotMatch(r.message, /AHILA/);
 });
 

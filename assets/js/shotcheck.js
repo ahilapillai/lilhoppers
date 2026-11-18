@@ -11,6 +11,7 @@
   else root.LH_SHOTCHECK = factory();
 })(this, function () {
   var MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  var FAIL_MESSAGE = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made, or type its UPI transaction ID above.";
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   var MONTH_RE = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
 
@@ -172,7 +173,8 @@
       if (problems.indexOf('TIME_EARLY') >= 0) why.push('This screenshot shows a payment at ' + fmtTime(best.h, best.mi) + ' today, ' + best.off + ' minutes ago. It should be the payment you just made.');
       if (problems.indexOf('TIME_LATE') >= 0) why.push('The time on this screenshot (' + fmtTime(best.h, best.mi) + ') is later than now.');
       if (problems.indexOf('NO_PAYEE') >= 0) why.push("This doesn't look like a payment to Lil' Hoppers.");
-      message = why.join(' ') + ' Please upload the screenshot of the payment you just made, or type its UPI transaction ID above.';
+      // Parents see one short message; the details stay in the summary for the admin.
+      message = FAIL_MESSAGE;
       summary = why.join(' ');
     } else {
       message = "We couldn't read the " + joinWords(missing.length ? missing : ['details']) + ' on this screenshot. You can still continue and we\'ll check it by hand, or upload a clearer one that shows the whole payment screen.';

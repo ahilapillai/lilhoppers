@@ -30,6 +30,7 @@ threading.Thread(target=httpd.serve_forever, daemon=True).start()
 BASE = f'http://127.0.0.1:{PORT}'
 
 failures = []
+FAIL_MSG = "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made, or type its UPI transaction ID above."
 def check(cond, msg):
     print(('PASS ' if cond else 'FAIL ') + msg)
     if not cond: failures.append(msg)
@@ -186,14 +187,14 @@ with sync_playwright() as p:
         pg.wait_for_selector('#shotCheck:not([data-state=checking])', timeout=90000)
         return pg.get_attribute('#shotCheck', 'data-state'), pg.inner_text('#shotCheck')
     st, msg = upload('gpay-16-nov.png', open(SAMPLE, 'rb').read())
-    check(st == 'fail' and '16 Nov 2026, 8:53 AM' in msg and 'not today' in msg, "check: the 16 Nov GPay screenshot is rejected (%s: %s)" % (st, msg[:90]))
+    check(st == 'fail' and msg.strip() == FAIL_MSG, "check: the 16 Nov GPay screenshot is rejected with the one short message (%s: %s)" % (st, msg[:90]))
     pg.locator('#shotPreview').screenshot(path=f'{OUT}/check-fail-old-date.png')
     pg.click('#submitDetails')
     check("doesn't look like the payment you just made" in pg.inner_text('#detailsError'), 'check: a rejected screenshot blocks "Get my ticket"')
     st, msg = upload('old-dark.png', old_dark)
-    check(st == 'fail' and 'minutes ago' in msg, 'check: dark-mode screenshot from 40 min ago is rejected (%s: %s)' % (st, msg[:90]))
+    check(st == 'fail' and msg.strip() == FAIL_MSG, 'check: dark-mode screenshot from 40 min ago is rejected (%s: %s)' % (st, msg[:90]))
     st, msg = upload('stranger.png', stranger)
-    check(st == 'fail' and "doesn't look like a payment to Lil' Hoppers" in msg and 'AHILA' not in msg, 'check: payment to someone else is rejected (%s: %s)' % (st, msg[:90]))
+    check(st == 'fail' and msg.strip() == FAIL_MSG and 'AHILA' not in msg, 'check: payment to someone else is rejected (%s: %s)' % (st, msg[:90]))
     st, msg = upload('fresh.png', fresh)
     check(st == 'pass' and 'Checked: paid today at' in msg and 'AHILA' not in msg, 'check: fresh screenshot to Ahila passes (%s: %s)' % (st, msg[:90]))
     pg.locator('#shotPreview').screenshot(path=f'{OUT}/check-pass.png')

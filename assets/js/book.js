@@ -12,7 +12,7 @@
 
   var state = {
     step: 'choose', slots: [], slotId: null, children: 1, extraParent: false,
-    giftOn: true, giftQty: 1, giftTouched: false, hold: null, result: null, shot: null
+    giftOn: true, giftQty: 1, giftTouched: false, photoOk: false, hold: null, result: null, shot: null
   };
   try {
     var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
@@ -130,6 +130,7 @@
     $('kidsNote').textContent = admitLabel(n, state.extraParent);
     $('extraParent').checked = state.extraParent;
     $('giftOn').checked = state.giftOn;
+    $('photoOk').checked = !!state.photoOk;
     var sel = $('giftQty');
     if (sel.options.length !== n) {
       sel.innerHTML = '';
@@ -156,9 +157,17 @@
   $('giftOn').addEventListener('change', function (e) { state.giftOn = e.target.checked; persist(); renderChoose(); });
   $('giftQty').addEventListener('change', function (e) { state.giftQty = Number(e.target.value); state.giftTouched = true; persist(); renderChoose(); });
 
+  $('photoOk').addEventListener('change', function (e) {
+    state.photoOk = e.target.checked;
+    $('consentRow').classList.remove('bk-nudge');
+    if (state.photoOk && $('chooseError').textContent === CONSENT_MSG) showError($('chooseError'), '');
+  });
+  var CONSENT_MSG = 'Tick the box above to continue.';
+
   $('toPay').addEventListener('click', function () {
     var err = $('chooseError');
     if (!state.slotId) { showError(err, 'Pick a time first.'); return; }
+    if (!state.photoOk) { $('consentRow').classList.add('bk-nudge'); $('photoOk').focus(); showError(err, CONSENT_MSG); return; }
     var btn = this;
     btn.disabled = true;
     showError(err, '');

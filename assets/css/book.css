@@ -89,6 +89,10 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-link{min-height:44px;border:0;background:transparent;color:#FCD419;font:inherit;font-weight:800;font-size:15px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .bk-link-dark{color:#6A47A8;width:100%}
 .bk-chip{min-height:40px;padding:0 16px;border-radius:999px;border:1.5px solid rgba(255,255,255,.35);background:transparent;color:#FFF8EC;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.bk-consent{display:flex;align-items:center;gap:10px;font-size:14px;line-height:1.35;color:#D2C8E6;cursor:pointer}
+.bk-consent input{flex:0 0 18px;width:18px;height:18px;margin:0;accent-color:#FCD419;cursor:pointer}
+.bk-consent.bk-nudge{color:#FFB4AB}
+.bk-consent.bk-nudge input{outline:2px solid #FE8278;outline-offset:2px;border-radius:4px}
 .bk-error{margin:0;background:#FDEEEC;color:#9F2A1E;border-radius:12px;padding:12px 14px;font-size:15px;font-weight:700;line-height:1.45}
 .bk-note{margin:6px 0 0;max-width:228px;text-align:center;font-size:14px;line-height:1.5;color:#FCE58A}
 .bk-pay-head{display:flex;flex-direction:column;gap:4px}

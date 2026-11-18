@@ -1,6 +1,6 @@
 # Lil' Hoppers Christmas Carnival
 
-Booking site for the Lil' Hoppers Christmas Carnival (Sat 19 Dec 2026, Vata Vriksha, Indiranagar).
+Booking site for the Lil' Hoppers Christmas Carnival (Sat 12 Dec 2026, Vata Vriksha, Indiranagar).
 
 - **`index.html`**: the landing page, with the 3D tree that turns with the visitor's hand, snow and fairy lights.
 - **`book.html`**: the booking flow. Parents pick a slot and add-ons and pay by UPI QR on one page (they can still change things while paying), then share proof of payment and get a ticket.

@@ -42,7 +42,9 @@ def decode_qr(png_bytes):
     return data
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'])
+    browser = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader',
+        # keep the tests offline: anything other than the local test server fails fast
+        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'])
 
     # ---------- landing ----------
     page = browser.new_page(viewport={'width': 1440, 'height': 900})
@@ -68,11 +70,12 @@ with sync_playwright() as p:
     page.mouse.move(1200, 400); page.wait_for_timeout(1200)
     page.screenshot(path=f'{OUT}/landing-hero-turned.png')
     page.screenshot(path=f'{OUT}/landing-full.png', full_page=True)
+    page.close()  # one 3D tree at a time keeps the software renderer responsive
     m = browser.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
-    m.goto(BASE + '/index.html'); m.wait_for_timeout(2000)
+    m.goto(BASE + '/index.html', wait_until='domcontentloaded'); m.wait_for_timeout(2500)
     m.screenshot(path=f'{OUT}/landing-mobile.png')
     check(m.evaluate('document.documentElement.scrollWidth') <= 391, 'landing mobile: no sideways scrolling')
-    m.close(); page.close()
+    m.close()
 
     # ---------- booking ----------
     ctx = browser.new_context(viewport={'width': 1280, 'height': 900})

@@ -8,7 +8,7 @@
 
 var CONFIG = {
   EVENT_NAME: "Lil' Hoppers Christmas Carnival",
-  EVENT_DATE: 'Saturday, 19 December 2026',
+  EVENT_DATE: 'Saturday, 12 December 2026',
   VENUE: 'Vata Vriksha, Indiranagar',
   MAPS_URL: 'https://share.google/GE3sdUk4LarPOcGPW',
   UPI_ID: 'ahilapil.26-1@okicici',

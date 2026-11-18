@@ -7,7 +7,7 @@ window.LH_CONFIG = {
   PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299 },
   MAX_CHILDREN: 10,
   HOLD_MINUTES: 20,
-  EVENT_DATE: 'Sat, 19 Dec 2026',
+  EVENT_DATE: 'Sat, 12 Dec 2026',
   VENUE: 'Vata Vriksha, Indiranagar',
   MAPS_URL: 'https://share.google/GE3sdUk4LarPOcGPW',
   CONTACT_EMAIL: 'hello.lilhoppers@gmail.com',

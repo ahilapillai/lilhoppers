@@ -1,18 +1,18 @@
-/* Booking flow: choose → pay (UPI QR) → details + proof → ticket. */
+/* Booking flow: choose & pay (choices + UPI QR on one page) → details + proof → ticket. */
 (function () {
   var cfg = window.LH_CONFIG;
   var P = window.LH_PRICING;
   var API = window.LH_API;
   var $ = function (id) { return document.getElementById(id); };
   var KEY = 'lh_booking_v1';
-  var STEPS = ['choose', 'pay', 'details', 'done'];
+  var STEPS = ['choose', 'details', 'done'];
 
   LH_FESTIVE.fillTemplates(document, LH_FESTIVE.generate());
   if (API.demo) $('demoBanner').hidden = false;
 
   var state = {
     step: 'choose', slots: [], slotId: null, children: 1, extraParent: false,
-    giftOn: true, giftQty: 1, giftTouched: false, photoOk: true, hold: null, result: null, shot: null
+    giftOn: true, giftQty: 1, giftTouched: false, photoOk: true, hold: null, holdStale: false, result: null, shot: null
   };
   try {
     var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
@@ -23,7 +23,7 @@
     try {
       sessionStorage.setItem(KEY, JSON.stringify({
         step: state.step, slotId: state.slotId, children: state.children, extraParent: state.extraParent,
-        giftOn: state.giftOn, giftQty: state.giftQty, giftTouched: state.giftTouched, hold: state.hold, result: state.result
+        giftOn: state.giftOn, giftQty: state.giftQty, giftTouched: state.giftTouched, hold: state.hold, holdStale: state.holdStale, result: state.result
       }));
     } catch (e) { /* private mode */ }
   }
@@ -66,7 +66,6 @@
       li.classList.toggle('is-done', i < idx);
       if (i === idx) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
     });
-    if (step === 'pay') renderPay();
     if (step === 'details') renderDetails();
     if (step === 'done') renderDone();
     if (step === 'choose') renderChoose();
@@ -77,7 +76,12 @@
     }
   }
 
-  /* ---------------- step 1: choose ---------------- */
+  /* ---------------- step 1: choose & pay ---------------- */
+  // A live hold is one the server is holding for the current choices. After a change that couldn't be
+  // held (e.g. not enough places), the hold is "stale": the QR is hidden until they tap Pay again.
+  function live() { return !!(state.hold && !state.holdStale); }
+  function mySlot(id) { return live() && state.hold.slot.id === id; }
+
   function loadAvailability() {
     $('slotList').innerHTML = '<p class="bk-muted">Loading slots…</p>';
     API.call('availability').then(function (res) {
@@ -90,7 +94,7 @@
       }
       state.slots = res.slots;
       var sel = slotById(state.slotId);
-      if (sel && sel.soldOut) state.slotId = null;
+      if (sel && sel.soldOut && !mySlot(sel.id)) state.slotId = null;
       renderChoose();
     });
   }
@@ -102,17 +106,18 @@
     box.setAttribute('role', 'radiogroup');
     box.setAttribute('aria-label', 'Time slots');
     state.slots.forEach(function (s) {
+      var sold = s.soldOut && !mySlot(s.id); // the places they're holding don't count against them
       var label = document.createElement('label');
-      label.className = 'bk-slot' + (s.soldOut ? ' is-sold' : '');
+      label.className = 'bk-slot' + (sold ? ' is-sold' : '');
       var input = document.createElement('input');
       input.type = 'radio'; input.name = 'slot'; input.value = s.id;
-      input.disabled = !!s.soldOut;
+      input.disabled = !!sold;
       input.checked = state.slotId === s.id;
-      input.addEventListener('change', function () { state.slotId = s.id; showError($('chooseError'), ''); persist(); });
+      input.addEventListener('change', function () { state.slotId = s.id; showError($('chooseError'), ''); changed(true); });
       var name = document.createElement('span'); name.className = 'bk-slot-name'; name.textContent = s.label;
       var time = document.createElement('span'); time.className = 'bk-slot-time'; time.textContent = String(s.time).replace(/^(\d{1,2}:\d{2}) (AM|PM) – (.+ \2)$/, '$1 – $3');
       label.appendChild(input); label.appendChild(name); label.appendChild(time);
-      if (s.soldOut) {
+      if (sold) {
         var badge = document.createElement('span'); badge.className = 'bk-slot-badge'; badge.textContent = 'Sold Out';
         label.appendChild(badge);
         label.setAttribute('aria-disabled', 'true');
@@ -138,24 +143,39 @@
     }
     sel.value = String(state.giftQty);
     $('giftQtyRow').hidden = !(state.giftOn && n > 1);
+    renderSummary();
+  }
+
+  function renderSummary() {
     var a = localAmounts();
     renderLines($('chooseLines'), a);
     $('chooseTotal').textContent = P.rupees(a.total);
+    $('toPayAmount').textContent = P.rupees(a.total);
+    var s = slotById(state.slotId);
+    $('chooseSlotLine').hidden = !s;
+    if (s) $('chooseSlotLine').textContent = s.label + ' · ' + s.time + ' · ' + cfg.EVENT_DATE;
+    renderPayPanel();
+  }
+
+  /* Any change to the choices. Once they're paying, the hold (and the QR) follows the change. */
+  function changed(slotOnly) {
+    persist();
+    if (slotOnly) renderSummary(); else renderChoose();
+    if (live()) scheduleRehold();
   }
 
   function setChildren(n) {
     n = Math.max(1, Math.min(cfg.MAX_CHILDREN, n));
     state.children = n;
     if (!state.giftTouched || state.giftQty > n) state.giftQty = n;
-    persist();
-    renderChoose();
+    changed();
   }
 
   $('kidsMinus').addEventListener('click', function () { setChildren(state.children - 1); });
   $('kidsPlus').addEventListener('click', function () { setChildren(state.children + 1); });
-  $('extraParent').addEventListener('change', function (e) { state.extraParent = e.target.checked; persist(); renderChoose(); });
-  $('giftOn').addEventListener('change', function (e) { state.giftOn = e.target.checked; persist(); renderChoose(); });
-  $('giftQty').addEventListener('change', function (e) { state.giftQty = Number(e.target.value); state.giftTouched = true; persist(); renderChoose(); });
+  $('extraParent').addEventListener('change', function (e) { state.extraParent = e.target.checked; changed(); });
+  $('giftOn').addEventListener('change', function (e) { state.giftOn = e.target.checked; changed(); });
+  $('giftQty').addEventListener('change', function (e) { state.giftQty = Number(e.target.value); state.giftTouched = true; changed(); });
 
   $('photoOk').addEventListener('change', function (e) {
     state.photoOk = e.target.checked;
@@ -163,6 +183,11 @@
     if (state.photoOk && $('chooseError').textContent === CONSENT_MSG) showError($('chooseError'), '');
   });
   var CONSENT_MSG = 'Tick the box above to continue.';
+  function needConsent() {
+    if (state.photoOk) return false;
+    $('consentRow').classList.add('bk-nudge'); $('photoOk').focus(); showError($('chooseError'), CONSENT_MSG);
+    return true;
+  }
 
   // "photo consent" opens the details: a popup on desktop, a bottom sheet on phones (CSS decides).
   var consentDlg = $('consentDlg');
@@ -179,53 +204,79 @@
     closeConsent();
   });
 
-  $('toPay').addEventListener('click', function () {
+  /* Holding places: "Pay" asks for a hold; later changes update the same booking. */
+  var holdSeq = 0, reholdTimer = null;
+  function setUpdating(on) {
+    $('payPanel').classList.toggle('is-updating', on);
+    $('payUpdating').hidden = !on;
+    $('paid').disabled = on;
+  }
+  function scheduleRehold() {
+    setUpdating(true);
+    clearTimeout(reholdTimer);
+    reholdTimer = setTimeout(requestHold, 450);
+  }
+  function requestHold() {
     var err = $('chooseError');
-    if (!state.slotId) { showError(err, 'Pick a time first.'); return; }
-    if (!state.photoOk) { $('consentRow').classList.add('bk-nudge'); $('photoOk').focus(); showError(err, CONSENT_MSG); return; }
-    var btn = this;
-    btn.disabled = true;
-    showError(err, '');
+    var seq = ++holdSeq;
+    var first = !live();
+    if (first) $('toPay').disabled = true;
     API.call('createHold', {
       slotId: state.slotId, children: state.children, extraParent: state.extraParent, giftQty: giftQty(),
       previousBookingId: state.hold ? state.hold.bookingId : undefined
     }).then(function (res) {
-      btn.disabled = false;
+      if (seq !== holdSeq) return; // a newer change has been sent since
+      $('toPay').disabled = false;
+      setUpdating(false);
       if (!res.ok) {
-        if (res.code === 'SOLD_OUT') {
-          var s = slotById(state.slotId); if (s) s.soldOut = true;
-          state.slotId = null; renderChoose();
-        }
+        if (res.code === 'SOLD_OUT') { var s = slotById(state.slotId); if (s) s.soldOut = true; state.slotId = null; }
+        if (state.hold) state.holdStale = true;
+        persist();
+        renderChoose();
         showError(err, res.error);
         return;
       }
       state.hold = res;
+      state.holdStale = false;
       state.result = null;
-      go('pay');
+      showError(err, '');
+      persist();
+      renderSummary();
+      if (first) $('payPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
+  }
+
+  $('toPay').addEventListener('click', function () {
+    if (!state.slotId) { showError($('chooseError'), 'Pick a time first.'); return; }
+    if (needConsent()) return;
+    showError($('chooseError'), '');
+    requestHold();
   });
 
-  /* ---------------- step 2: pay ---------------- */
-  var timer = null;
-  function renderPay() {
+  var timer = null, shownUri = null;
+  function renderPayPanel() {
+    var on = live();
+    $('payPanel').hidden = !on;
+    $('toPay').hidden = on;
+    $('chooseCard').classList.toggle('has-pay', on);
+    if (!on) { clearInterval(timer); shownUri = null; return; }
     var h = state.hold;
-    if (!h) return go('choose');
     fill('bookingId', h.bookingId);
-    fill('total', P.rupees(h.amounts.total));
-    fill('slotLine', h.slot.label + ' · ' + h.slot.time + ' · ' + cfg.EVENT_DATE);
-    document.querySelectorAll('[data-lines="server"]').forEach(function (dl) { renderLines(dl, h.amounts); });
     $('upiId').textContent = h.upi.id;
     $('upiLink').href = h.upi.uri;
-    try {
-      var qr = qrcode(0, 'M');
-      qr.addData(h.upi.uri);
-      qr.make();
-      $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true, title: 'UPI QR code for ' + P.rupees(h.amounts.total) });
-      $('qr').setAttribute('aria-label', 'UPI QR code to pay ' + P.rupees(h.amounts.total) + ' to ' + h.upi.id);
-    } catch (e) {
-      $('qr').textContent = 'QR code unavailable. Pay to the UPI ID instead.';
+    if (shownUri !== h.upi.uri) {
+      shownUri = h.upi.uri;
+      try {
+        var qr = qrcode(0, 'M');
+        qr.addData(h.upi.uri);
+        qr.make();
+        $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true, title: 'UPI QR code for ' + P.rupees(h.amounts.total) });
+        $('qr').setAttribute('aria-label', 'UPI QR code to pay ' + P.rupees(h.amounts.total) + ' to ' + h.upi.id);
+      } catch (e) {
+        $('qr').textContent = 'QR code unavailable. Pay to the UPI ID instead.';
+      }
+      startCountdown();
     }
-    startCountdown();
   }
 
   function startCountdown() {
@@ -247,16 +298,20 @@
     var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1800); };
     if (navigator.clipboard) navigator.clipboard.writeText(state.hold.upi.id).then(done, done); else done();
   });
-  $('paid').addEventListener('click', function () { go('details'); });
+  $('paid').addEventListener('click', function () {
+    if (needConsent()) return;
+    go('details');
+  });
   $('changeBooking').addEventListener('click', function () {
     if (state.hold) API.call('cancelHold', { bookingId: state.hold.bookingId });
     state.hold = null;
-    clearInterval(timer);
-    go('choose');
+    state.holdStale = false;
+    persist();
+    renderChoose();
     loadAvailability();
   });
 
-  /* ---------------- step 3: details ---------------- */
+  /* ---------------- step 2: details ---------------- */
   function renderDetails() {
     var h = state.hold;
     if (!h) return go('choose');
@@ -405,9 +460,9 @@
       go('done');
     });
   });
-  $('backToPay').addEventListener('click', function () { go('pay'); });
+  $('backToPay').addEventListener('click', function () { go('choose'); });
 
-  /* ---------------- step 4: done ---------------- */
+  /* ---------------- step 3: done ---------------- */
   function renderDone() {
     var r = state.result;
     if (!r) return go('choose');
@@ -422,7 +477,7 @@
     document.querySelectorAll('#step-done [data-lines="server"]').forEach(function (dl) { renderLines(dl, r.amounts); });
   }
   $('bookAnother').addEventListener('click', function () {
-    state.hold = null; state.result = null; state.shot = null; state.slotId = null;
+    state.hold = null; state.holdStale = false; state.result = null; state.shot = null; state.slotId = null;
     state.children = 1; state.extraParent = false; state.giftOn = true; state.giftQty = 1; state.giftTouched = false;
     $('detailsForm').reset();
     clearShot();
@@ -431,7 +486,7 @@
   });
 
   /* ---------------- start ---------------- */
-  var start = state.result ? 'done' : (state.hold ? (state.step === 'details' ? 'details' : 'pay') : 'choose');
+  var start = state.result ? 'done' : (live() && state.step === 'details' ? 'details' : 'choose');
   go(start, { quiet: true });
   if (start === 'choose') loadAvailability();
   else API.call('availability').then(function (res) { if (res.ok) state.slots = res.slots; });

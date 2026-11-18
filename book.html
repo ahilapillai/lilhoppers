@@ -29,13 +29,12 @@
 <p class="bk-demo" id="demoBanner" hidden>Demo mode: this booking flow works, but nothing is saved and no payment is checked.</p>
 
 <ol class="bk-steps" aria-label="Booking steps">
-<li data-step="choose"><span class="bk-dot">1</span><span class="bk-step-label">Choose</span></li>
-<li data-step="pay"><span class="bk-dot">2</span><span class="bk-step-label">Pay</span></li>
-<li data-step="details"><span class="bk-dot">3</span><span class="bk-step-label">Details</span></li>
-<li data-step="done"><span class="bk-dot">4</span><span class="bk-step-label">Ticket</span></li>
+<li data-step="choose"><span class="bk-dot">1</span><span class="bk-step-label">Choose &amp; pay</span></li>
+<li data-step="details"><span class="bk-dot">2</span><span class="bk-step-label">Details</span></li>
+<li data-step="done"><span class="bk-dot">3</span><span class="bk-step-label">Ticket</span></li>
 </ol>
 
-<!-- STEP 1: choose -->
+<!-- STEP 1: choose & pay -->
 <section id="step-choose" class="bk-step" aria-labelledby="chooseTitle">
 <div class="bk-intro">
 <p class="bk-eyebrow">Christmas Carnival · Sat 19 Dec</p>
@@ -82,31 +81,20 @@
 </fieldset>
 </div>
 
-<aside class="bk-card bk-summary" aria-labelledby="sumTitle">
+<aside class="bk-card bk-summary" id="chooseCard" aria-labelledby="sumTitle">
 <h2 id="sumTitle">Order summary</h2>
+<p class="bk-muted bk-slotline" id="chooseSlotLine" hidden></p>
 <dl class="bk-lines" id="chooseLines"></dl>
 <div class="bk-total"><span>Total</span><strong id="chooseTotal">₹0</strong></div>
 <label class="bk-consent" id="consentRow"><input type="checkbox" id="photoOk" checked><span>I agree to <button type="button" class="bk-consent-link" id="consentInfo" aria-haspopup="dialog">photo consent</button></span></label>
-<button type="button" class="bk-btn" id="toPay">Continue to payment<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+<button type="button" class="bk-btn" id="toPay"><span>Pay <span id="toPayAmount">₹0</span></span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
 <p class="bk-error" id="chooseError" role="alert" hidden></p>
-</aside>
-</div>
-</section>
-
-<!-- STEP 2: pay -->
-<section id="step-pay" class="bk-step" aria-labelledby="payTitle" hidden>
-<div class="bk-intro">
-<p class="bk-eyebrow">Booking <span data-fill="bookingId"></span></p>
-<h1 id="payTitle">Pay <span data-fill="total"></span> by UPI</h1>
-<p class="bk-sub">We're holding your places for <strong id="countdown">20:00</strong>.</p>
-</div>
-<div class="bk-grid">
-<div class="bk-card bk-pay">
+<div class="bk-paybox" id="payPanel" hidden>
+<p class="bk-paybox-head"><span>Booking <strong data-fill="bookingId"></strong></span><span>Held for <strong id="countdown">20:00</strong></span></p>
 <div class="bk-qr-wrap">
 <div class="bk-qr" id="qr" role="img" aria-label="UPI QR code"></div>
+<p class="bk-updating" id="payUpdating" role="status" hidden>Updating your total…</p>
 </div>
-<div class="bk-pay-side">
-<p class="bk-pay-amount">Pay exactly <strong data-fill="total"></strong></p>
 <div class="bk-upi">
 <span class="bk-upi-label">Or pay to this UPI ID</span>
 <div class="bk-upi-row"><code id="upiId"></code><button type="button" class="bk-copy" id="copyUpi" aria-label="Copy UPI ID">Copy</button></div>
@@ -116,17 +104,11 @@
 <button type="button" class="bk-btn" id="paid">Payment done<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
 <p class="bk-muted bk-center">Tap this once your payment has gone through.</p>
 </div>
-</div>
-<aside class="bk-card bk-summary" aria-label="Order summary">
-<h2>Order summary</h2>
-<p class="bk-muted" data-fill="slotLine"></p>
-<dl class="bk-lines" data-lines="server"></dl>
-<div class="bk-total"><span>Total</span><strong data-fill="total"></strong></div>
 </aside>
 </div>
 </section>
 
-<!-- STEP 3: details (the ticket) -->
+<!-- STEP 2: details (the ticket) -->
 <section id="step-details" class="bk-step" aria-labelledby="detailsTitle" hidden>
 <div class="bk-intro">
 <p class="bk-eyebrow">Almost there</p>
@@ -171,7 +153,7 @@
 </form>
 </section>
 
-<!-- STEP 4: done -->
+<!-- STEP 3: done -->
 <section id="step-done" class="bk-step" aria-labelledby="doneTitle" hidden>
 <div class="bk-intro">
 <p class="bk-eyebrow">Booking received</p>

@@ -80,13 +80,12 @@ Price and time copy is updated to ₹899 per ticket and the three slots. Every "
 
 ### 5.2 Booking flow
 
-1. **Choose:** pick a slot (sold-out slots disabled), the number of children, and add-ons. An itemized order summary updates live.
-2. **Pay:** the itemized order summary is shown again, then:
-   - A **UPI QR code** generated from the final total and the UPI ID `ahilapil.26-1@okicici`.
-   - The UPI ID with a Copy button on its right, an "Open UPI app" button for paying on the same phone, a "pay the exact amount" note, and a countdown for the 20-minute hold.
-   - A **Payment done** button.
+1. **Choose & pay (one page):** pick a slot (sold-out slots disabled), the number of children, and add-ons. An itemized order summary updates live, with a photo consent tick (ticked by default; "photo consent" opens the details as a popup, or a bottom sheet on phones). Tapping **Pay ₹total** holds the places and shows the payment in the same summary card:
+   - A **UPI QR code** generated from the total and the UPI ID `ahilapil.26-1@okicici`, the booking ID, and a countdown for the 20-minute hold.
+   - The UPI ID with a Copy button on its right, an "Open UPI app" button on phones, and a **Payment done** button.
+   - Parents can still change the slot, children or add-ons while paying. The total, the hold and the QR update in place (same booking ID); the QR is blurred with "Updating your total…" until the new one is ready. If the change doesn't fit (not enough places), the QR is hidden, the message says why, and the earlier hold is kept until they tap Pay again.
    - The QR uses `upi://pay?pa=ahilapil.26-1@okicici&pn=Lil Hoppers&am=<total>.00&cu=INR&tn=<booking ID>`, so the booking ID appears in the payment note.
-3. **Details (ticket):** parent's name, email, phone (10-digit Indian mobile), each child's name, and proof of payment: the UPI transaction ID (12-digit UTR) **or** a screenshot. At least one is required.
+2. **Details (ticket):** parent's name, email, phone (10-digit Indian mobile), each child's name, and proof of payment: the UPI transaction ID (12-digit UTR) **or** a screenshot. At least one is required.
    - **Screenshot check.** As soon as a screenshot is chosen, the page reads its text and checks that it shows:
      1. the payee **AHILA PICHAIPILLAI** (or the UPI ID `ahilapil.26-1@okicici`), allowing for a couple of misread letters;
      2. **today's date**;
@@ -100,7 +99,7 @@ Price and time copy is updated to ₹899 per ticket and the three slots. Every "
 
      Dates are read in common app formats (16 November 2026, 16 Nov, Nov 16 2026, 16/11/2026, Today), and times as 8:53am, 08:53 PM or 13:44:10. The phone's status-bar clock is ignored. The amount is also looked for and reported to the admin, but doesn't block the booking.
      The check runs in the parent's browser (Tesseract OCR, about 7 MB downloaded the first time someone uploads a screenshot), so it stops honest mistakes and reused old screenshots. A determined person could still fake one, so the admin still confirms the money arrived before verifying. The payee names and the 15-minute window are set in `assets/js/config.js`.
-4. **Ticket:** the booking ID, the status "Payment being checked", the slot, the names and the itemized amount. It says the confirmation email will follow once the payment is verified.
+3. **Ticket:** the booking ID, the status "Payment being checked", the slot, the names and the itemized amount. It says the confirmation email will follow once the payment is verified.
 
 The in-progress booking survives a page reload during payment.
 

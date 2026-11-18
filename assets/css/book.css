@@ -109,6 +109,19 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 }
 @keyframes bk-sheet-up{from{transform:translateY(100%)}to{transform:none}}
 @media (prefers-reduced-motion:reduce){.bk-sheet[open]{animation:none}}
+.bk-summary.has-pay{position:static}
+.bk-slotline{margin:-6px 0 0;font-size:14px}
+.bk-paybox{display:flex;flex-direction:column;gap:14px;padding-top:18px;border-top:1.5px dashed rgba(255,255,255,.28)}
+.bk-paybox[hidden]{display:none}
+.bk-paybox-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;margin:0;font-size:14px;font-weight:700;color:#D2C8E6}
+.bk-paybox-head strong{color:#FFF8EC}
+.bk-paybox .bk-qr-wrap{position:relative}
+.bk-paybox .bk-qr{transition:filter .2s,opacity .2s}
+.bk-paybox.is-updating .bk-qr{filter:blur(5px);opacity:.55}
+.bk-paybox.is-updating #upiLink{pointer-events:none;opacity:.5}
+.bk-updating{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;padding:8px 16px;border-radius:999px;background:#FFF8EC;color:#4E2F92;font-weight:800;font-size:14px;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.bk-paybox .bk-upi{margin-top:0}
+@media (hover:hover) and (pointer:fine){#upiLink{display:none}}
 .bk-error{margin:0;background:#FDEEEC;color:#9F2A1E;border-radius:12px;padding:12px 14px;font-size:15px;font-weight:700;line-height:1.45}
 .bk-note{margin:6px 0 0;max-width:228px;text-align:center;font-size:14px;line-height:1.5;color:#FCE58A}
 .bk-pay-head{display:flex;flex-direction:column;gap:4px}

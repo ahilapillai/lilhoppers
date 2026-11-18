@@ -195,6 +195,41 @@ test('changing the selection releases the previous hold', () => {
   const first = env.call({ action: 'createHold', slotId: 'S3', children: 2, giftQty: 2 });
   const second = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 1, previousBookingId: first.bookingId });
   assert.equal(second.ok, true);
+  assert.equal(second.bookingId, first.bookingId, 'editing keeps the same booking');
+  const row = bookingRow(env, first.bookingId);
+  assert.deepEqual([row['Status'], row['Children'], row['Expected Total']], ['Awaiting Payment', 1, 1198]);
+  assert.equal(env.sheets.Bookings.data.filter((r) => r[0] === first.bookingId).length, 1, 'no extra row');
+});
+
+test('editing a hold counts its own places only once, and a change that does not fit keeps the old hold', () => {
+  const env = load();
+  env.call({ action: 'adminUpdateCapacity', passcode: env.props.ADMIN_PASSCODE, slotId: 'S1', capacity: 3 });
+  const mine = env.call({ action: 'createHold', slotId: 'S1', children: 3, giftQty: 0 });
+  assert.equal(mine.ok, true);
+  // Same 3 places, now with gifts: fits, because its own places aren't counted twice.
+  const edited = env.call({ action: 'createHold', slotId: 'S1', children: 3, giftQty: 3, previousBookingId: mine.bookingId });
+  assert.equal(edited.ok, true);
+  assert.equal(edited.amounts.total, 3 * 899 + 3 * 299);
+  // 4 children won't fit: refused, and the 3-child hold is still there.
+  const tooMany = env.call({ action: 'createHold', slotId: 'S1', children: 4, giftQty: 0, previousBookingId: mine.bookingId });
+  assert.equal(tooMany.code, 'NOT_ENOUGH_PLACES');
+  const row = bookingRow(env, mine.bookingId);
+  assert.deepEqual([row['Status'], row['Children']], ['Awaiting Payment', 3]);
+  // Moving it to another slot frees Slot 1.
+  const moved = env.call({ action: 'createHold', slotId: 'S2', children: 3, giftQty: 0, previousBookingId: mine.bookingId });
+  assert.equal(moved.bookingId, mine.bookingId);
+  assert.equal(bookingRow(env, mine.bookingId)['Slot Time'], '4:00 PM – 5:30 PM');
+  assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 3, giftQty: 0 }).ok, true);
+});
+
+test('editing a hold that has already run out starts a new booking', () => {
+  const env = load();
+  const first = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 });
+  const sh = env.sheets.Bookings.data;
+  sh.find((r) => r[0] === first.bookingId)[sh[0].indexOf('Hold Expires At')] = new Date(Date.now() - 1000);
+  const again = env.call({ action: 'createHold', slotId: 'S3', children: 2, giftQty: 0, previousBookingId: first.bookingId });
+  assert.equal(again.ok, true);
+  assert.notEqual(again.bookingId, first.bookingId);
   assert.equal(bookingRow(env, first.bookingId)['Status'], 'Abandoned');
 });
 

@@ -3,7 +3,7 @@
 Booking site for the Lil' Hoppers Christmas Carnival (Sat 19 Dec 2026, Vata Vriksha, Indiranagar).
 
 - **`index.html`**: the landing page, with the 3D tree that turns with the visitor's hand, snow and fairy lights.
-- **`book.html`**: the booking flow. Parents pick a slot and add-ons, pay by UPI QR, share proof of payment and get a ticket.
+- **`book.html`**: the booking flow. Parents pick a slot and add-ons and pay by UPI QR on one page (they can still change things while paying), then share proof of payment and get a ticket.
 - **`admin.html`**: the admin page (`https://lilhoppers.co/admin`). Shows slot counts and capacity, and every booking with the parent's details, itemized payment, screenshot and screenshot check. Admins verify or reject payments here.
 - **`apps-script/`**: the backend, a Google Apps Script web app. It stores bookings in Google Sheets, saves screenshots to Google Drive, and sends email from hello.lilhoppers@gmail.com.
 - **`docs/PRD.md`**: the product requirements.

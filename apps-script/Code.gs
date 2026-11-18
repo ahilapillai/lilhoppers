@@ -220,22 +220,36 @@ function apiCreateHold(p) {
   return withLock(function () {
     var now = Date.now();
     var rows = readBookings();
-    if (p.previousBookingId) abandonIfAwaiting(rows, String(p.previousBookingId));
     expireHolds_(rows, now);
+    // Changing an unpaid hold (more kids, add-ons, another slot) updates that same booking.
+    // Its own places are left out while counting; if the change doesn't fit, the old hold stays as it was.
+    var prev = p.previousBookingId ? findBooking_(rows, String(p.previousBookingId)) : null;
+    if (prev && prev.b.status !== STATUS.AWAITING) prev = null;
+    if (prev) prev.b.status = STATUS.ABANDONED;
     var usage = countUsage(rows.map(function (r) { return r.b; }), slots, now)[sel.slot.id];
+    if (prev) prev.b.status = STATUS.AWAITING;
     if (usage.total >= sel.slot.capacity) return { ok: false, code: 'SOLD_OUT', error: sel.slot.label + ' is sold out. Please choose another slot.' };
     if (usage.total + sel.children > sel.slot.capacity) {
       return { ok: false, code: 'NOT_ENOUGH_PLACES', error: "There aren't enough places left in " + sel.slot.label + ' for ' + sel.children + ' children. Try another slot or fewer children.' };
     }
     var amounts = computeAmounts(sel.children, sel.extraParent, sel.giftQty);
-    var id = newBookingId_(rows);
     var holdExpires = new Date(now + CONFIG.HOLD_MINUTES * 60000);
-    appendBooking_({
-      'Booking ID': id, 'Created At': new Date(now), 'Slot ID': sel.slot.id, 'Slot Time': sel.slot.time,
+    var fields = {
+      'Slot ID': sel.slot.id, 'Slot Time': sel.slot.time,
       'Children': sel.children, 'Extra Parent': sel.extraParent ? 'Yes' : 'No', 'Extra Parent Charge': amounts.extraParentCharge,
       'Ticket Subtotal': amounts.ticketSubtotal, 'Santa Gift Qty': amounts.giftQty, 'Santa Gift Subtotal': amounts.giftSubtotal,
       'Expected Total': amounts.total, 'Status': STATUS.AWAITING, 'Payment Status': PAYMENT.NOT_PAID, 'Hold Expires At': holdExpires
-    });
+    };
+    var id;
+    if (prev) {
+      id = String(prev.b.bookingId);
+      updateBooking_(prev.rowIndex, fields);
+    } else {
+      id = newBookingId_(rows);
+      fields['Booking ID'] = id;
+      fields['Created At'] = new Date(now);
+      appendBooking_(fields);
+    }
     return {
       ok: true,
       bookingId: id,

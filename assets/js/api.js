@@ -71,13 +71,17 @@
       var n = Number(p.children), g = Number(p.giftQty || 0);
       if (!slot) return { ok: false, code: 'BAD_SLOT', error: 'Please choose a slot.' };
       if (!(n >= 1 && n <= cfg.MAX_CHILDREN) || !(g >= 0 && g <= n)) return { ok: false, code: 'BAD_INPUT', error: 'Check the number of children and gifts.' };
-      if (p.previousBookingId) { var prev = find(db, p.previousBookingId); if (prev && prev.status === 'Awaiting Payment') prev.status = 'Abandoned'; }
       expire(db, now);
+      var prev = p.previousBookingId ? find(db, p.previousBookingId) : null;
+      if (prev && prev.status !== 'Awaiting Payment') prev = null;
+      if (prev) prev.status = 'Abandoned';
       var used = usage(db, now)[slot.id].total;
+      if (prev) prev.status = 'Awaiting Payment';
       if (used >= slot.capacity) { save(db); return { ok: false, code: 'SOLD_OUT', error: slot.label + ' is sold out. Please choose another slot.' }; }
       if (used + n > slot.capacity) { save(db); return { ok: false, code: 'NOT_ENOUGH_PLACES', error: "There aren't enough places left in " + slot.label + ' for ' + n + ' children. Try another slot or fewer children.' }; }
       var a = P.computeAmounts(cfg.PRICES, n, p.extraParent === true, g);
-      var id = 'LH-DEMO' + Math.floor(100 + Math.random() * 900);
+      if (prev) db.bookings.splice(db.bookings.indexOf(prev), 1);
+      var id = prev ? prev.bookingId : 'LH-DEMO' + Math.floor(100 + Math.random() * 900);
       var b = { bookingId: id, createdAt: new Date(now).toISOString(), slotId: slot.id, slotTime: slot.time, children: n, childNames: '', parentName: '', email: '', phone: '',
         extraParent: a.extraParent ? 'Yes' : 'No', extraParentCharge: a.extraParentCharge, ticketSubtotal: a.ticketSubtotal, giftQty: a.giftQty, giftSubtotal: a.giftSubtotal,
         expectedTotal: a.total, utr: '', screenshotUrl: '', status: 'Awaiting Payment', paymentStatus: 'Not paid', verifiedAmount: '', verifiedAt: '',

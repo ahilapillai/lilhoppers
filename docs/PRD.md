@@ -13,7 +13,7 @@ This version adds the final slot, add-on, payment and admin requirements to the 
 | Event | Lil' Hoppers Christmas Carnival |
 | Date | Saturday, 19 December 2026 |
 | Venue | Vata Vriksha, Indiranagar — [Google Maps](https://share.google/GE3sdUk4LarPOcGPW) |
-| Activities | Art station, cookie decoration, meet & greet Santa, photobooth, tattoo station (temporary), magic show, and more |
+| Activities | Art station, cookie decoration, meet & greet Santa, photobooth, tattoo station (temporary), tote bag making, stalls, and more |
 | Contact | hello.lilhoppers@gmail.com · Call or WhatsApp +91 96864 53295 · Instagram [@lil.hoppers](https://instagram.com/lil.hoppers) |
 
 ## 2. Users

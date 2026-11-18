@@ -32,6 +32,8 @@
 .bk-col{display:flex;flex-direction:column;gap:18px}
 .bk-card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:22px;padding:24px;margin:0;min-width:0}
 fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
+.bk-group{display:flex;flex-direction:column;gap:14px;min-width:0;margin:0;padding:0;border:0}
+.bk-group-sep{margin-top:22px;padding-top:22px;border-top:1px solid rgba(255,255,255,.18)}
 .bk-legend{float:left;width:100%;padding:0;margin:0 0 4px;font-family:'Fredoka',ui-rounded,sans-serif;font-weight:600;font-size:21px}
 .bk-legend+*{clear:both}
 .bk-muted{margin:0;color:#D2C8E6;font-size:15px}

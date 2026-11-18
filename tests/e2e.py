@@ -86,8 +86,13 @@ with sync_playwright() as p:
     page.wait_for_selector('.bk-slot')
     check(page.locator('#demoBanner').is_visible(), 'book: demo banner shown when no API_URL')
     total = lambda: page.inner_text('#chooseTotal')
-    check(total() == '₹1,198', 'book: default 1 child + Santa gift = ₹1,198 (got %s)' % total())
-    check(page.is_checked('#giftOn') and not page.is_checked('#extraParent'), 'book: gift checked, extra parent unchecked by default')
+    check(total() == '₹899', 'book: default 1 child, no add-ons = ₹899 (got %s)' % total())
+    check(not page.is_checked('#giftOn') and not page.is_checked('#extraParent'), 'book: gift and extra parent unchecked by default')
+    kids_card = page.locator('.bk-card-groups')
+    check(kids_card.count() == 1 and 'How many children?' in kids_card.inner_text() and 'Add-ons' in kids_card.inner_text(), 'book: add-ons sit in the same card as "How many children?"')
+    check(page.evaluate("getComputedStyle(document.querySelector('.bk-group-sep')).borderTopStyle") == 'solid', 'book: a separator line above Add-ons')
+    page.check('#giftOn')
+    check(total() == '₹1,198', 'book: 1 child + Santa gift = ₹1,198 (got %s)' % total())
     check('optional' in page.inner_text('.bk-addon-gift').lower(), 'book: Santa gift labelled Optional')
     check(page.locator('.bk-addon .bk-price').count() == 2, 'book: price shown beside each add-on')
     page.uncheck('#giftOn')
@@ -202,6 +207,7 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errors.append(str(e)))
     pg.goto(BASE + '/book.html'); pg.wait_for_selector('.bk-slot')
     check(pg.locator('.lh-flake').count() == 0, 'book: no snowflakes on the booking pages')
+    pg.check('#giftOn')  # 1 kid + gift = ₹1,198, the amount on the sample receipts
     pg.click('.bk-slot >> nth=2'); pg.click('#toPay'); pg.wait_for_selector('#payPanel:not([hidden])'); pg.wait_for_timeout(900)  # let the panel scroll into view
     box = pg.locator('.bk-upi-row').bounding_box(); cp = pg.locator('#copyUpi').bounding_box(); code = pg.locator('#upiId').bounding_box()
     check(abs((cp['y'] + cp['height'] / 2) - (code['y'] + code['height'] / 2)) < 4 and cp['x'] > code['x'] + code['width'] - 2, 'book: Copy button sits to the right of the UPI ID')

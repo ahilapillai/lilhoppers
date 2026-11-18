@@ -12,7 +12,7 @@
 
   var state = {
     step: 'choose', slots: [], slotId: null, children: 1, extraParent: false,
-    giftOn: true, giftQty: 1, giftTouched: false, photoOk: true, hold: null, holdStale: false, result: null, shot: null
+    giftOn: false, giftQty: 1, giftTouched: false, photoOk: true, hold: null, holdStale: false, result: null, shot: null
   };
   try {
     var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
@@ -478,7 +478,7 @@
   }
   $('bookAnother').addEventListener('click', function () {
     state.hold = null; state.holdStale = false; state.result = null; state.shot = null; state.slotId = null;
-    state.children = 1; state.extraParent = false; state.giftOn = true; state.giftQty = 1; state.giftTouched = false;
+    state.children = 1; state.extraParent = false; state.giftOn = false; state.giftQty = 1; state.giftTouched = false;
     $('detailsForm').reset();
     clearShot();
     go('choose');

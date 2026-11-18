@@ -48,7 +48,8 @@
 <div class="bk-slots" id="slotList" aria-live="polite"><p class="bk-muted">Loading slots…</p></div>
 </fieldset>
 
-<fieldset class="bk-card">
+<div class="bk-card bk-card-groups">
+<fieldset class="bk-group">
 <legend class="bk-legend">How many children?</legend>
 <div class="bk-row">
 <div class="bk-stepper">
@@ -60,7 +61,7 @@
 </div>
 </fieldset>
 
-<fieldset class="bk-card">
+<fieldset class="bk-group bk-group-sep">
 <legend class="bk-legend">Add-ons</legend>
 <label class="bk-addon">
 <input type="checkbox" id="extraParent">
@@ -69,8 +70,8 @@
 </label>
 <div class="bk-addon bk-addon-gift">
 <label class="bk-addon-main">
-<input type="checkbox" id="giftOn" checked>
-<span class="bk-addon-text"><span class="bk-addon-name">Personalised Gift from Santa <span class="bk-tag">Optional</span></span><span class="bk-addon-desc">Added for you. Untick it if you don't want it.</span></span>
+<input type="checkbox" id="giftOn">
+<span class="bk-addon-text"><span class="bk-addon-name">Personalised Gift from Santa <span class="bk-tag">Optional</span></span><span class="bk-addon-desc">Santa hands your child a gift made just for them.</span></span>
 <span class="bk-price">₹299 <small>per child</small></span>
 </label>
 <div class="bk-gift-qty" id="giftQtyRow" hidden>
@@ -79,6 +80,7 @@
 </div>
 </div>
 </fieldset>
+</div>
 </div>
 
 <aside class="bk-card bk-summary" id="chooseCard" aria-labelledby="sumTitle">

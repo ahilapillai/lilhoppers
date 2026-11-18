@@ -44,7 +44,8 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
   - When an admin verifies the payment, the parent gets the confirmation email.
 - **Changing prices:** update both `CONFIG.PRICES` in `apps-script/Code.gs` and `PRICES` in `assets/js/config.js`.
 - **Changing capacities:** use the admin page, or edit the **Slots** tab.
-- **Rejecting a booking, even a verified one:** click **Reject** on the admin page, or pick **Rejected** in the booking's **Status** dropdown in the sheet. Its places go back on sale straight away. Confirm bookings from the admin page, so the confirmation email goes out.
+- **Rejecting a booking, even a verified one:** click **Reject** on the admin page, or pick **Rejected** in the booking's **Status** dropdown in the sheet. Its places go back on sale straight away.
+- **Confirming a booking:** click **Send confirmation** on the admin page, or pick **Verified** in its **Status** dropdown in the sheet. Either way the parent gets the confirmation email (only once), and the amount received is filled in as the expected total unless you've typed one.
 - **Slots in the Bookings tab** are recorded by their time (the **Slot Time** column). If you change a slot's time in the **Slots** tab after bookings exist, change it in those bookings too.
 
 ## Tests

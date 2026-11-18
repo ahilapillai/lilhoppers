@@ -693,12 +693,62 @@ function setup() {
   }
 
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'expireHoldsJob') ScriptApp.deleteTrigger(t);
+    var h = t.getHandlerFunction();
+    if (h === 'expireHoldsJob' || h === 'onBookingEdit') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('expireHoldsJob').timeBased().everyMinutes(10).create();
+  ScriptApp.newTrigger('onBookingEdit').forSpreadsheet(ss).onEdit().create();
 
   var me = Session.getEffectiveUser().getEmail();
   console.log(me === CONFIG.SENDER_EMAIL ? 'Emails will be sent from ' + me + '.' : 'WARNING: you are signed in as ' + me + '. Emails must come from ' + CONFIG.SENDER_EMAIL + ', so redo this as that account.');
+}
+
+/**
+ * Runs when the Bookings sheet is edited by hand.
+ * Status set to Verified: the payment is marked verified and the parent gets the confirmation email (once).
+ * Status set to Rejected: the payment is marked rejected. Places are counted from Status, so they go back on sale.
+ */
+function onBookingEdit(e) {
+  if (!e || !e.range) return;
+  var sh = e.range.getSheet();
+  if (sh.getName() !== 'Bookings') return;
+  var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  var statusCol = head.indexOf('Status') + 1;
+  var c0 = e.range.getColumn(), c1 = c0 + e.range.getNumColumns() - 1;
+  if (statusCol < c0 || statusCol > c1) return;
+  var r0 = Math.max(e.range.getRow(), 2), r1 = e.range.getRow() + e.range.getNumRows() - 1;
+
+  var toConfirm = [];
+  var outcome = withLock(function () {
+    readBookings().forEach(function (row) {
+      if (row.rowIndex < r0 || row.rowIndex > r1) return;
+      var b = row.b;
+      if (b.status === STATUS.VERIFIED) {
+        if (b.paymentStatus !== PAYMENT.VERIFIED) {
+          var amount = b.verifiedAmount === '' || b.verifiedAmount === null || b.verifiedAmount === undefined ? (Number(b.expectedTotal) || '') : b.verifiedAmount;
+          updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.VERIFIED, 'Verified Amount': amount, 'Verified At': new Date() });
+        }
+        if (!b.confirmationEmailSentAt && b.email) toConfirm.push(String(b.bookingId));
+      } else if (b.status === STATUS.REJECTED && b.paymentStatus !== PAYMENT.REJECTED) {
+        updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.REJECTED });
+      }
+    });
+    return { ok: true };
+  });
+  if (!outcome.ok) return;
+
+  var rows = readBookings();
+  toConfirm.forEach(function (id) {
+    var row = findBooking_(rows, id);
+    if (!row) return;
+    try {
+      sendConfirmationEmail_(row.b);
+      updateBooking_(row.rowIndex, { 'Confirmation Email Sent At': new Date() });
+    } catch (err) {
+      console.error('Confirmation email failed for ' + id + ': ' + err);
+      updateBooking_(row.rowIndex, { 'Admin Notes': appendNote_(row.b.adminNotes, 'Confirmation email failed: ' + err) });
+    }
+  });
 }
 
 /** Timer job: releases places held by people who never finished paying. */

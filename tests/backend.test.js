@@ -10,6 +10,7 @@ function makeSheet(name) {
   const data = [];
   const sheet = {
     name, data,
+    getName: () => name,
     getDataRange: () => ({ getValues: () => data.map((r) => r.slice()) }),
     appendRow: (row) => { data.push(row.slice()); },
     getLastRow: () => data.length,
@@ -45,6 +46,7 @@ function load() {
   const mails = [];
   const files = [];
   let lockHeld = false;
+  const triggers = [];
   const ctx = {
     console: { log() {}, warn() {}, error() {} },
     SpreadsheetApp: {
@@ -74,14 +76,17 @@ function load() {
     ScriptApp: {
       getProjectTriggers: () => [],
       deleteTrigger() {},
-      newTrigger: () => ({ timeBased: () => ({ everyMinutes: () => ({ create() {} }) }) })
+      newTrigger: (h) => ({
+        timeBased: () => ({ everyMinutes: () => ({ create() { triggers.push(h); } }) }),
+        forSpreadsheet: () => ({ onEdit: () => ({ create() { triggers.push(h); } }) })
+      })
     }
   };
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../apps-script/Code.gs'), 'utf8'), ctx);
   ctx.setup();
   const call = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
-  return { ctx, call, sheets, props, mails, files };
+  return { ctx, call, sheets, props, mails, files, triggers };
 }
 
 const details = (n = 1, extra = {}) => ({
@@ -401,4 +406,68 @@ test('changing Status to Rejected straight in the sheet also frees the places', 
   const sh = env.sheets.Bookings.data;
   sh.find((r) => r[0] === hold.bookingId)[sh[0].indexOf('Status')] = 'Rejected';
   assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }).ok, true);
+});
+
+// Simulates a hand edit of one Status cell, as the sheet's edit trigger would see it.
+function editStatus(env, bookingId, value) {
+  const sh = env.sheets.Bookings;
+  const col = sh.data[0].indexOf('Status');
+  const r = sh.data.findIndex((row) => row[0] === bookingId);
+  sh.data[r][col] = value;
+  env.ctx.onBookingEdit({ range: { getSheet: () => sh, getRow: () => r + 1, getNumRows: () => 1, getColumn: () => col + 1, getNumColumns: () => 1 }, value });
+}
+
+test('setup installs the sheet edit trigger', () => {
+  const env = load();
+  assert.ok(env.triggers.includes('onBookingEdit'));
+  assert.ok(env.triggers.includes('expireHoldsJob'));
+});
+
+test('setting Status to Verified in the sheet sends the confirmation email once', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 1 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  assert.equal(env.mails.length, 1); // "we're checking your payment"
+  editStatus(env, hold.bookingId, 'Verified');
+  assert.equal(env.mails.length, 2);
+  assert.match(env.mails[1].subject, /You're booked/);
+  assert.equal(env.mails[1].to, 'meera@example.com');
+  const row = bookingRow(env, hold.bookingId);
+  assert.equal(row['Payment Status'], 'Verified');
+  assert.equal(row['Verified Amount'], 1198);
+  assert.ok(row['Verified At'] && typeof row['Verified At'].getTime === 'function');
+  assert.ok(row['Confirmation Email Sent At'] && typeof row['Confirmation Email Sent At'].getTime === 'function');
+  editStatus(env, hold.bookingId, 'Verified');
+  assert.equal(env.mails.length, 2, 'no second email');
+});
+
+test('a booking already confirmed on the admin page gets no extra email from the sheet', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  env.call({ action: 'adminVerify', passcode: env.props.ADMIN_PASSCODE, bookingId: hold.bookingId, verifiedAmount: 899 });
+  assert.equal(env.mails.length, 2);
+  editStatus(env, hold.bookingId, 'Verified');
+  assert.equal(env.mails.length, 2);
+});
+
+test('setting Status to Rejected in the sheet marks the payment rejected and sends nothing', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  editStatus(env, hold.bookingId, 'Rejected');
+  assert.equal(bookingRow(env, hold.bookingId)['Payment Status'], 'Rejected');
+  assert.equal(env.mails.length, 1);
+});
+
+test('edits to other columns or other sheets are ignored', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  const sh = env.sheets.Bookings;
+  const col = sh.data[0].indexOf('Status');
+  sh.data.find((r) => r[0] === hold.bookingId)[col] = 'Verified';
+  env.ctx.onBookingEdit({ range: { getSheet: () => sh, getRow: () => 2, getNumRows: () => 1, getColumn: () => col, getNumColumns: () => 1 } });
+  env.ctx.onBookingEdit({ range: { getSheet: () => env.sheets.Slots, getRow: () => 2, getNumRows: () => 1, getColumn: () => col + 1, getNumColumns: () => 1 } });
+  assert.equal(env.mails.length, 1);
 });

@@ -13,6 +13,14 @@ os.makedirs(OUT, exist_ok=True)
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
+    def do_GET(self):
+        # Always test in demo mode: serve config.js with API_URL emptied, so tests never touch the real bookings.
+        if self.path.split('?')[0] == '/assets/js/config.js':
+            src = open(os.path.join(ROOT, 'assets', 'js', 'config.js'), encoding='utf-8').read()
+            body = re.sub(r"API_URL:\s*'[^']*'", "API_URL: ''", src).encode('utf-8')
+            self.send_response(200); self.send_header('Content-Type', 'application/javascript'); self.send_header('Content-Length', str(len(body))); self.end_headers()
+            self.wfile.write(body); return
+        return super().do_GET()
 handler = functools.partial(Quiet, directory=ROOT)
 socketserver.TCPServer.allow_reuse_address = True
 httpd = socketserver.ThreadingTCPServer(('127.0.0.1', 0), handler)

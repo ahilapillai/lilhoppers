@@ -4,7 +4,7 @@ Booking site for the Lil' Hoppers Christmas Carnival (Sat 19 Dec 2026, Vata Vrik
 
 - **`index.html`**: the landing page, with the 3D tree that turns with the visitor's hand, snow and fairy lights.
 - **`book.html`**: the booking flow. Parents pick a slot and add-ons, pay by UPI QR, share proof of payment and get a ticket.
-- **`admin.html`**: the admin page (`https://ahilapillai.github.io/lilhoppers/admin.html`). Shows slot counts and capacity, and every booking with the parent's details, itemized payment, screenshot and screenshot check. Admins verify or reject payments here.
+- **`admin.html`**: the admin page (`https://lilhoppers.co/admin`). Shows slot counts and capacity, and every booking with the parent's details, itemized payment, screenshot and screenshot check. Admins verify or reject payments here.
 - **`apps-script/`**: the backend, a Google Apps Script web app. It stores bookings in Google Sheets, saves screenshots to Google Drive, and sends email from hello.lilhoppers@gmail.com.
 - **`docs/PRD.md`**: the product requirements.
 
@@ -14,7 +14,7 @@ Until the backend is connected, the site runs in **demo mode**. Everything works
 
 1. In this repo on GitHub, open **Settings → Pages**.
 2. Under **Build and deployment**, set **Source** to *Deploy from a branch*, then choose the **main** branch and the **/ (root)** folder, and click **Save**.
-3. After a minute the site is live at `https://ahilapillai.github.io/lilhoppers/`, with the admin page at `https://ahilapillai.github.io/lilhoppers/admin.html`.
+3. After a minute the site is live at `https://lilhoppers.co` (the `CNAME` file sets the custom domain; DNS at Namecheap has four A records for `@` pointing to 185.199.108.153 / 109 / 110 / 111 and a CNAME `www` → `ahilapillai.github.io`). The admin page is at `https://lilhoppers.co/admin`.
 
 ## 2. Set up the backend (once, as hello.lilhoppers@gmail.com)
 

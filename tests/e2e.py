@@ -167,7 +167,7 @@ with sync_playwright() as p:
     box = pg.locator('.bk-upi-row').bounding_box(); cp = pg.locator('#copyUpi').bounding_box(); code = pg.locator('#upiId').bounding_box()
     check(abs((cp['y'] + cp['height'] / 2) - (code['y'] + code['height'] / 2)) < 4 and cp['x'] > code['x'] + code['width'] - 2, 'book: Copy button sits to the right of the UPI ID')
     pg.locator('.bk-pay').screenshot(path=f'{OUT}/book-pay-card.png')
-    check(pg.inner_text('.bk-pay-admit') == '1 kid + 1 parent' and pg.locator('.bk-qr-wrap .bk-note').count() == 1 and pg.locator('.bk-pay-side .bk-note').count() == 0, 'pay: shows "1 kid + 1 parent" and the exact-amount note sits under the QR')
+    check('1 kid + 1 parent' in pg.inner_text('#step-pay .bk-summary') and 'Child tickets' not in pg.inner_text('#step-pay') and pg.locator('#step-pay .bk-note').count() == 0, 'pay: summary says "1 kid + 1 parent"; no repeated exact-amount note')
     check(pg.locator('#changeBooking').is_visible() is False and 'Change my booking' not in pg.inner_text('#step-pay'), 'pay: no "Change my booking" button')
     pg.click('#paid'); pg.wait_for_selector('#step-details:not([hidden])')
     check('so that we can confirm your booking' in pg.inner_text('#step-details'), 'details: new subtitle')

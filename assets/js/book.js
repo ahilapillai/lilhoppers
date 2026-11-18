@@ -39,7 +39,7 @@
   function showError(el, msg) { el.textContent = msg || ''; el.hidden = !msg; }
 
   function renderLines(dl, a) {
-    var rows = [['Child tickets × ' + a.children + ' (1 parent each)', P.rupees(a.ticketSubtotal)]];
+    var rows = [[plural(a.children, 'kid', 'kids') + ' + ' + plural(a.children, 'parent', 'parents'), P.rupees(a.ticketSubtotal)]];
     if (a.extraParent) rows.push(['Extra parent', P.rupees(a.extraParentCharge)]);
     if (a.giftQty) rows.push(['Gift from Santa × ' + a.giftQty, P.rupees(a.giftSubtotal)]);
     dl.innerHTML = '';
@@ -188,7 +188,6 @@
     if (!h) return go('choose');
     fill('bookingId', h.bookingId);
     fill('total', P.rupees(h.amounts.total));
-    fill('admit', admitLabel(h.amounts.children, h.amounts.extraParent));
     fill('slotLine', h.slot.label + ' · ' + h.slot.time + ' · ' + cfg.EVENT_DATE);
     document.querySelectorAll('[data-lines="server"]').forEach(function (dl) { renderLines(dl, h.amounts); });
     $('upiId').textContent = h.upi.id;

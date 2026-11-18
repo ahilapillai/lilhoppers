@@ -602,7 +602,7 @@ function bookingTable_(b, verified) {
     ['Booking ID', '<strong>' + escapeHtml_(b.bookingId) + '</strong>'],
     ['Slot', escapeHtml_(CONFIG.EVENT_DATE + ', ' + b.slotTime)],
     ['Children', escapeHtml_(b.childNames)],
-    ['Child tickets (' + a.children + ' × ' + rupees(CONFIG.PRICES.CHILD_TICKET) + ', each with one parent)', rupees(a.ticketSubtotal)]
+    [a.children + (a.children === 1 ? ' kid' : ' kids') + ' + ' + a.children + (a.children === 1 ? ' parent' : ' parents'), rupees(a.ticketSubtotal)]
   ];
   if (a.extraParent) rows.push(['Extra parent', rupees(a.extraParentCharge)]);
   if (a.giftQty) rows.push(['Personalised gift from Santa (' + a.giftQty + ' × ' + rupees(CONFIG.PRICES.SANTA_GIFT) + ')', rupees(a.giftSubtotal)]);

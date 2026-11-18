@@ -42,7 +42,7 @@ with sync_playwright() as p:
     page.goto(BASE + '/index.html')
     page.wait_for_timeout(2500)
     check(not errors, 'landing: no script errors ' + str(errors[:2]))
-    check(page.locator('.lh-bulb').count() == 18 + 18 + 7, 'landing: fairy lights rendered (%d)' % page.locator('.lh-bulb').count())
+    check(page.locator('.lh-bulb').count() == 18 + 18 + 8, 'landing: fairy lights rendered (%d)' % page.locator('.lh-bulb').count())
     n = page.locator('.lh-flake').count(); check(60 < n < 150, 'landing: snowflakes rendered, fewer than before (%d)' % n)
     check(page.locator('template').count() == 0, 'landing: all templates expanded')
     body = page.inner_text('body')

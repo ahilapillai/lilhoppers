@@ -19,10 +19,13 @@ function makeSheet(name) {
         getValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => ((data[r - 1 + i] || [])[c - 1 + j]))),
         setValue: (v) => { while (data.length < r) data.push([]); data[r - 1][c - 1] = v; return api; },
         setFontWeight: () => api,
-        setBackground: () => api
+        setBackground: () => api,
+        setDataValidation: (rule) => { sheet.validation = { col: c, rule }; return api; }
       };
       return api;
     },
+    getMaxRows: () => 1000,
+    deleteColumn: (c) => { data.forEach((r) => r.splice(c - 1, 1)); },
     setFrozenRows: () => {}
   };
   return sheet;
@@ -44,7 +47,10 @@ function load() {
   let lockHeld = false;
   const ctx = {
     console: { log() {}, warn() {}, error() {} },
-    SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: () => ss, flush() {} },
+    SpreadsheetApp: {
+      getActiveSpreadsheet: () => ss, openById: () => ss, flush() {},
+      newDataValidation: () => { const r = {}; const b = { requireValueInList: (v) => { r.list = v; return b; }, setAllowInvalid: () => b, build: () => r }; return b; }
+    },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) },
     CacheService: { getScriptCache: () => ({ get: (k) => cache[k] ?? null, put: (k, v) => { cache[k] = v; } }) },
     LockService: {
@@ -339,4 +345,60 @@ test('browser price maths (assets/js/pricing.js) matches the backend for every c
   assert.equal(P.rupees(1198), '₹1,198');
   assert.equal(P.rupees(123456), '₹1,23,456');
   assert.equal(P.upiUri('ahilapil.26-1@okicici', 'Lil Hoppers', 1198, 'LH-AB123'), ctx.upiUri(1198, 'LH-AB123'));
+});
+
+test('bookings sheet has no Slot ID column; an older sheet loses it on setup and counting still works', () => {
+  const env = load();
+  assert.equal(env.sheets.Bookings.data[0].includes('Slot ID'), false);
+  assert.equal(env.sheets.Bookings.data[0].includes('Slot Time'), true);
+  for (let i = 0; i < 33; i++) env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 });
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
+  assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }).ok, true);
+
+  // An older sheet with a Slot ID column next to Slot Time:
+  const sh = env.sheets.Bookings.data;
+  const at = sh[0].indexOf('Slot Time');
+  sh.forEach((r, i) => r.splice(at, 0, i === 0 ? 'Slot ID' : 'S2'));
+  env.ctx.setup();
+  assert.equal(sh[0].includes('Slot ID'), false);
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
+  // Typed with a plain hyphen instead of an en dash still matches.
+  sh.slice(1).forEach((r) => { if (/^4:00/.test(r[at])) r[at] = '4:00 PM - 5:30 PM'; });
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
+});
+
+test('Status column has a dropdown of the booking statuses', () => {
+  const env = load();
+  const v = env.sheets.Bookings.validation;
+  assert.equal(v.col, env.sheets.Bookings.data[0].indexOf('Status') + 1);
+  assert.deepEqual([...v.rule.list], ['Awaiting Payment', 'Pending Verification', 'Verified', 'Rejected', 'Abandoned']);
+});
+
+test('a verified booking can be rejected and its places go back on sale', () => {
+  const env = load();
+  const P = env.props.ADMIN_PASSCODE;
+  env.call({ action: 'adminUpdateCapacity', passcode: P, slotId: 'S3', capacity: 2 });
+  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 2, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(2) });
+  assert.equal(env.call({ action: 'adminVerify', passcode: P, bookingId: hold.bookingId, verifiedAmount: 1798 }).ok, true);
+  assert.equal(env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
+  const res = env.call({ action: 'adminReject', passcode: P, bookingId: hold.bookingId, reason: 'Cancelled by parent' });
+  assert.equal(res.ok, true);
+  assert.equal(bookingRow(env, hold.bookingId)['Status'], 'Rejected');
+  const s3 = env.call({ action: 'adminList', passcode: P }).slots.find((s) => s.id === 'S3');
+  assert.equal(s3.verified, 0);
+  assert.equal(env.call({ action: 'createHold', slotId: 'S3', children: 2, giftQty: 0 }).ok, true);
+});
+
+test('changing Status to Rejected straight in the sheet also frees the places', () => {
+  const env = load();
+  const P = env.props.ADMIN_PASSCODE;
+  env.call({ action: 'adminUpdateCapacity', passcode: P, slotId: 'S1', capacity: 1 });
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1) });
+  env.call({ action: 'adminVerify', passcode: P, bookingId: hold.bookingId, verifiedAmount: 899 });
+  assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
+  const sh = env.sheets.Bookings.data;
+  sh.find((r) => r[0] === hold.bookingId)[sh[0].indexOf('Status')] = 'Rejected';
+  assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }).ok, true);
 });

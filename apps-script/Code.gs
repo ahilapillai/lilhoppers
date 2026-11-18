@@ -43,7 +43,7 @@ var STATUS = {
 var PAYMENT = { NOT_PAID: 'Not paid', PENDING: 'Pending', VERIFIED: 'Verified', REJECTED: 'Rejected' };
 
 var BOOKING_HEADERS = [
-  'Booking ID', 'Created At', 'Slot ID', 'Slot Time', 'Children', 'Child Names', 'Parent Name', 'Email', 'Phone',
+  'Booking ID', 'Created At', 'Slot Time', 'Children', 'Child Names', 'Parent Name', 'Email', 'Phone',
   'Extra Parent', 'Extra Parent Charge', 'Ticket Subtotal', 'Santa Gift Qty', 'Santa Gift Subtotal', 'Expected Total',
   'UPI Transaction ID', 'Screenshot URL', 'Screenshot Check', 'Screenshot Shows', 'Screenshot Check Note', 'Status', 'Payment Status', 'Verified Amount', 'Verified At',
   'Hold Expires At', 'Submitted At', 'Pending Email Sent At', 'Confirmation Email Sent At', 'Rejection Reason', 'Admin Notes'
@@ -404,7 +404,6 @@ function apiAdminReject(p) {
   return withLock(function () {
     var row = findBooking_(readBookings(), String(p.bookingId || ''));
     if (!row) return { ok: false, code: 'NOT_FOUND', error: 'Booking not found.' };
-    if (row.b.status === STATUS.VERIFIED) return { ok: false, code: 'BAD_STATE', error: 'This booking is already verified.' };
     updateBooking_(row.rowIndex, { 'Status': STATUS.REJECTED, 'Payment Status': PAYMENT.REJECTED, 'Rejection Reason': reason });
     return { ok: true };
   });
@@ -468,6 +467,7 @@ function readBookings() {
   var values = sh.getDataRange().getValues();
   var head = values[0] || [];
   var out = [];
+  var slots = null;
   for (var i = 1; i < values.length; i++) {
     if (!values[i][0]) continue;
     var b = {};
@@ -477,9 +477,19 @@ function readBookings() {
       var v = values[i][c];
       b[key] = v instanceof Date ? v.toISOString() : v;
     }
+    // The sheet only keeps the slot's time; find which slot that is.
+    if (!b.slotId && b.slotTime) {
+      slots = slots || readSlots();
+      for (var s = 0; s < slots.length; s++) if (sameSlotTime_(slots[s].time, b.slotTime)) b.slotId = slots[s].id;
+    }
     out.push({ rowIndex: i + 1, b: b });
   }
   return out;
+}
+
+function sameSlotTime_(a, b) {
+  var norm = function (t) { return String(t || '').replace(/[\u2013\u2014]/g, '-').replace(/\s+/g, '').toLowerCase(); };
+  return norm(a) === norm(b);
 }
 
 function findBooking_(rows, bookingId) {
@@ -652,6 +662,18 @@ function setup() {
       bookings.getRange(1, col).setValue(h).setFontWeight('bold').setBackground('#F1ECFA');
     });
   }
+  // Bookings keep only the slot's time, not a separate Slot ID column.
+  var headNow = bookings.getRange(1, 1, 1, bookings.getLastColumn()).getValues()[0];
+  if (headNow.indexOf('Slot ID') >= 0) bookings.deleteColumn(headNow.indexOf('Slot ID') + 1);
+  // Status dropdown. Changing a booking to Rejected here (or on the admin page) puts its places back on sale.
+  var statusCol = bookings.getRange(1, 1, 1, bookings.getLastColumn()).getValues()[0].indexOf('Status') + 1;
+  if (statusCol > 0) {
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList([STATUS.AWAITING, STATUS.PENDING, STATUS.VERIFIED, STATUS.REJECTED, STATUS.ABANDONED], true)
+      .setAllowInvalid(false).build();
+    bookings.getRange(2, statusCol, Math.max(bookings.getMaxRows() - 1, 1), 1).setDataValidation(rule);
+  }
+
   var slots = ss.getSheetByName('Slots') || ss.insertSheet('Slots');
   if (slots.getLastRow() === 0) {
     slots.appendRow(SLOT_HEADERS);

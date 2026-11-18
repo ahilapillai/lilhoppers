@@ -157,7 +157,7 @@
         '<small>—</small>';
       var actions = '';
       if (b.status === 'Pending Verification') actions = '<button class="ad-btn ad-btn-sm" data-act="verify" data-i="' + i + '">Send confirmation</button>';
-      if (b.status === 'Pending Verification' || /^Awaiting/.test(b.status)) actions += '<button class="ad-btn ad-btn-sm ad-btn-ghost" data-act="reject" data-i="' + i + '">Reject</button>';
+      if (b.status === 'Pending Verification' || b.status === 'Verified' || /^Awaiting/.test(b.status)) actions += '<button class="ad-btn ad-btn-sm ad-btn-ghost" data-act="reject" data-i="' + i + '">Reject</button>';
       return '<tr>' +
         '<td><span class="ad-id">' + esc(b.bookingId) + '</span><small>' + esc(when(b.createdAt)) + '</small></td>' +
         '<td>' + esc(slot ? slot.label : b.slotId) + '<small>' + esc(b.slotTime) + '</small></td>' +

@@ -9,6 +9,7 @@ a{color:#FCD419}a:hover{color:#FFE36B}
 .lh-o2,.lh-o6{margin-top:77px}
 .lh-o3,.lh-o5{margin-top:22px}
 .lh-o4{margin-top:4px}
+.lh-more{margin-top:-90px;position:relative}
 .lh-snow{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3}
 .lh-snow-tall{--lh-fall:1800px}
 .lh-flake{position:absolute;top:-24px;display:block;border-radius:50%;background:#FFFFFF;animation-name:lh-fall;animation-timing-function:linear;animation-iteration-count:infinite;will-change:transform}
@@ -38,6 +39,7 @@ a{color:#FCD419}a:hover{color:#FFE36B}
 .lh-arc{grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))}
 .lh-arc-line{display:none}
 .lh-o1,.lh-o2,.lh-o3,.lh-o4,.lh-o5,.lh-o6,.lh-o7{margin-top:0}
+.lh-more{margin-top:48px}
 }
 @media (max-width:760px){.lh-navlinks{display:none}}
 img{max-width:100%}

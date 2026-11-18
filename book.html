@@ -86,7 +86,7 @@
 <h2 id="sumTitle">Order summary</h2>
 <dl class="bk-lines" id="chooseLines"></dl>
 <div class="bk-total"><span>Total</span><strong id="chooseTotal">₹0</strong></div>
-<label class="bk-consent" id="consentRow"><input type="checkbox" id="photoOk"><span>My kids can star in the day&rsquo;s photos.</span></label>
+<label class="bk-consent" id="consentRow"><input type="checkbox" id="photoOk"><span>I agree to <button type="button" class="bk-consent-link" id="consentInfo" aria-haspopup="dialog">photo consent</button></span></label>
 <button type="button" class="bk-btn" id="toPay">Continue to payment<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
 <p class="bk-error" id="chooseError" role="alert" hidden></p>
 </aside>
@@ -205,6 +205,14 @@
 <div class="bk-done-actions"><a class="bk-btn" href="index.html">Back to the carnival</a><button type="button" class="bk-btn bk-btn-ghost" id="bookAnother">Book another</button></div>
 </section>
 </main>
+
+<dialog class="bk-sheet" id="consentDlg" aria-labelledby="consentTitle">
+<div class="bk-sheet-grip" aria-hidden="true"></div>
+<button type="button" class="bk-sheet-x" id="consentClose" aria-label="Close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+<h2 id="consentTitle">Photo consent</h2>
+<p>We&rsquo;re collaborating with various brands at the carnival, so photos and reels may be shot by anyone there. We&rsquo;re not in control of these.</p>
+<button type="button" class="bk-btn" id="consentAgree">I agree</button>
+</dialog>
 </div>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/pricing.js"></script>

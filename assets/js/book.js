@@ -164,6 +164,21 @@
   });
   var CONSENT_MSG = 'Tick the box above to continue.';
 
+  // "photo consent" opens the details: a popup on desktop, a bottom sheet on phones (CSS decides).
+  var consentDlg = $('consentDlg');
+  $('consentInfo').addEventListener('click', function (e) {
+    e.preventDefault(); // don't tick the box just by opening the details
+    if (consentDlg.showModal) consentDlg.showModal(); else consentDlg.setAttribute('open', '');
+  });
+  function closeConsent() { if (consentDlg.close) consentDlg.close(); else consentDlg.removeAttribute('open'); }
+  $('consentClose').addEventListener('click', closeConsent);
+  consentDlg.addEventListener('click', function (e) { if (e.target === consentDlg) closeConsent(); }); // tap outside
+  $('consentAgree').addEventListener('click', function () {
+    $('photoOk').checked = true;
+    $('photoOk').dispatchEvent(new Event('change'));
+    closeConsent();
+  });
+
   $('toPay').addEventListener('click', function () {
     var err = $('chooseError');
     if (!state.slotId) { showError(err, 'Pick a time first.'); return; }

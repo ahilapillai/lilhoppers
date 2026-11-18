@@ -60,7 +60,18 @@
   }
 
   /* ---------------- slots ---------------- */
+  function renderDoor() {
+    var c = data.checkin;
+    $('door').hidden = !c;
+    if (!c) return;
+    var arrived = data.slots.reduce(function (n, s) { return n + (s.arrived || 0); }, 0);
+    $('door').innerHTML = '<span>Door check-in for volunteers: <a href="' + esc(c.url) + '" target="_blank" rel="noopener">' + esc(c.url.replace(/^https?:\/\//, '')) + '</a></span>' +
+      '<span>Volunteer passcode: <strong>' + (esc(c.passcode) || 'run setup to create one') + '</strong></span>' +
+      '<span>Arrived so far: <strong>' + arrived + '</strong> ' + (arrived === 1 ? 'child' : 'children') + '</span>';
+  }
+
   function renderSlots() {
+    renderDoor();
     var t = data.totals;
     $('totals').innerHTML = 'Children counted: <strong>' + t.counted + '</strong> of <strong>' + t.capacity + '</strong>' +
       (t.capacity !== 100 ? ' <span class="ad-bad">(total capacity is ' + t.capacity + ', not 100)</span>' : '');
@@ -76,6 +87,7 @@
         '<div class="ad-bar" aria-hidden="true"><i class="v" style="width:' + (s.verified / cap * 100) + '%"></i><i class="p" style="width:' + (s.pending / cap * 100) + '%"></i><i class="h" style="width:' + (s.holds / cap * 100) + '%"></i></div>' +
         '<dl class="ad-nums"><div><dt>Verified</dt><dd>' + s.verified + '</dd></div><div><dt>Pending</dt><dd>' + s.pending + '</dd></div>' +
         '<div><dt>On hold</dt><dd>' + s.holds + '</dd></div><div><dt>Counted</dt><dd>' + s.total + '<small style="font-size:13px;color:#6E6482"> / ' + s.capacity + '</small></dd></div></dl>' +
+        (s.arrived ? '<p class="ad-arrived">' + s.arrived + ' of ' + s.verified + ' verified children checked in</p>' : '') +
         '<form class="ad-cap"><label for="cap-' + esc(s.id) + '">Capacity</label><input id="cap-' + esc(s.id) + '" type="number" min="0" max="1000" step="1" value="' + s.capacity + '" required>' +
         '<button type="submit" class="ad-btn ad-btn-sm">Save</button></form>';
       card.querySelector('form').addEventListener('submit', function (e) {
@@ -168,6 +180,7 @@
         '<td><span class="ad-money' + (mismatch ? ' ad-mismatch' : '') + '">' + money(verified ? b.verifiedAmount : '') + '</span>' + (b.verifiedAt ? '<small>' + esc(when(b.verifiedAt)) + '</small>' : '') + '</td>' +
         '<td class="ad-proof">' + proof + '</td>' +
         '<td><span class="ad-badge ' + badgeClass(b.status) + '">' + esc(b.status) + '</span><small>Payment: ' + esc(b.paymentStatus) + '</small>' +
+        (b.checkedInAt && b.status === 'Verified' ? '<span class="ad-badge ad-b-in">Checked in ' + esc(when(b.checkedInAt)) + '</span>' : '') +
         (b.rejectionReason ? '<small>' + esc(b.rejectionReason) + '</small>' : '') + (b.adminNotes ? '<small>Note: ' + esc(b.adminNotes) + '</small>' : '') + '</td>' +
         '<td><div class="ad-actions">' + actions + '</div></td>' +
         '</tr>';

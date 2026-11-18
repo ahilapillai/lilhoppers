@@ -47,6 +47,7 @@ function load() {
   const files = [];
   let lockHeld = false;
   const triggers = [];
+  let uuidN = 1;
   const ctx = {
     console: { log() {}, warn() {}, error() {} },
     SpreadsheetApp: {
@@ -68,7 +69,7 @@ function load() {
     Utilities: {
       base64Decode: (s) => Array.from(Buffer.from(s, 'base64')),
       newBlob: (bytes, type, name) => ({ bytes, type, name }),
-      getUuid: () => 'abcdef12-3456-7890-abcd-ef1234567890'
+      getUuid: () => (uuidN++) + 'bcdef12-3456-7890-abcd-ef1234567890'
     },
     MailApp: { sendEmail: (m) => mails.push(m) },
     Session: { getEffectiveUser: () => ({ getEmail: () => 'hello.lilhoppers@gmail.com' }) },
@@ -540,4 +541,89 @@ test('edits to other columns or other sheets are ignored', () => {
   env.ctx.onBookingEdit({ range: { getSheet: () => sh, getRow: () => 2, getNumRows: () => 1, getColumn: () => col, getNumColumns: () => 1 } });
   env.ctx.onBookingEdit({ range: { getSheet: () => env.sheets.Slots, getRow: () => 2, getNumRows: () => 1, getColumn: () => col + 1, getNumColumns: () => 1 } });
   assert.equal(env.mails.length, 1);
+});
+
+/* ---------------- entry QR and volunteer check-in ---------------- */
+
+function verifiedBooking(env, opts = {}) {
+  const hold = env.call({ action: 'createHold', slotId: opts.slotId || 'S2', children: opts.children || 2, extraParent: !!opts.extraParent, giftQty: opts.giftQty ?? 1 });
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(opts.children || 2) });
+  if (opts.verify !== false) env.call({ action: 'adminVerify', passcode: env.props.ADMIN_PASSCODE, bookingId: hold.bookingId, verifiedAmount: hold.amounts.total });
+  return hold.bookingId;
+}
+
+test('the confirmation email carries the entry QR', () => {
+  const env = load();
+  const id = verifiedBooking(env, { children: 2, extraParent: true });
+  const mail = env.mails.find((m) => /You're booked/.test(m.subject));
+  assert.ok(mail.inlineImages && mail.inlineImages.entryqr, 'QR attached inline');
+  const qr = mail.inlineImages.entryqr;
+  assert.equal(qr.type, 'image/gif');
+  assert.equal(qr.name, 'entry-' + id + '.gif');
+  assert.equal(Buffer.from(qr.bytes).subarray(0, 6).toString(), 'GIF87a');
+  assert.match(mail.htmlBody, /src="cid:entryqr"/);
+  assert.match(mail.htmlBody, /Show this QR at the entrance/);
+  assert.match(mail.htmlBody, /lets in 2 kids \+ 2 parents \+ 1 extra parent/);
+  assert.doesNotMatch(mail.htmlBody, /Show this email at the entrance/);
+  assert.equal(env.ctx.entryUrl_(id), 'https://lilhoppers.co/checkin.html?b=' + id);
+});
+
+test('setup creates a separate volunteer passcode; it opens check-in but not admin', () => {
+  const env = load();
+  const V = env.props.VOLUNTEER_PASSCODE, A = env.props.ADMIN_PASSCODE;
+  assert.ok(V && V.length === 6 && V !== A);
+  assert.equal(env.call({ action: 'staffCheck', passcode: V }).ok, true);
+  assert.equal(env.call({ action: 'staffCheck', passcode: A }).ok, true, 'admin passcode works at the door too');
+  assert.equal(env.call({ action: 'staffCheck', passcode: 'nope' }).code, 'UNAUTHORISED');
+  assert.equal(env.call({ action: 'adminList', passcode: V }).code, 'UNAUTHORISED', 'volunteers cannot open admin');
+  const list = env.call({ action: 'adminList', passcode: A });
+  assert.deepEqual({ ...list.checkin }, { url: 'https://lilhoppers.co/checkin', passcode: V });
+});
+
+test('check-in: valid ticket shows who is allowed in, checks in once, can be undone', () => {
+  const env = load();
+  const V = env.props.VOLUNTEER_PASSCODE;
+  const id = verifiedBooking(env, { children: 2, extraParent: true, giftQty: 2 });
+  const look = env.call({ action: 'checkinLookup', passcode: V, bookingId: 'https://lilhoppers.co/checkin.html?b=' + id });
+  assert.equal(look.ok, true);
+  const p = look.pass;
+  assert.deepEqual([p.verdict, p.children, p.parentsIncluded, p.extraParent, p.grownUps, p.giftQty, p.slotLabel, p.slotTime],
+    ['valid', 2, 2, true, 3, 2, 'Slot 2', '4:00 PM – 5:30 PM']);
+  assert.equal(p.parentName, 'Meera Iyer');
+
+  const first = env.call({ action: 'checkin', passcode: V, bookingId: id.toLowerCase() });
+  assert.equal(first.ok, true);
+  assert.equal(first.pass.verdict, 'checkedIn');
+  assert.ok(first.pass.checkedInAt);
+  assert.ok(bookingRow(env, id)['Checked In At']);
+  assert.equal(env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE }).slots.find((s) => s.id === 'S2').arrived, 2);
+
+  const again = env.call({ action: 'checkin', passcode: V, bookingId: id });
+  assert.equal(again.already, true, 'a second scan does not let them in twice');
+  assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: id }).pass.verdict, 'already');
+
+  const undo = env.call({ action: 'checkinUndo', passcode: V, bookingId: id });
+  assert.equal(undo.pass.verdict, 'valid');
+  assert.equal(bookingRow(env, id)['Checked In At'], '');
+});
+
+test('check-in: single parent, unconfirmed, rejected, unknown and bad codes', () => {
+  const env = load();
+  const V = env.props.VOLUNTEER_PASSCODE;
+  const solo = verifiedBooking(env, { children: 1, extraParent: false, giftQty: 0 });
+  const p = env.call({ action: 'checkinLookup', passcode: V, bookingId: solo }).pass;
+  assert.deepEqual([p.children, p.grownUps, p.extraParent, p.giftQty], [1, 1, false, 0]);
+
+  const pending = verifiedBooking(env, { verify: false });
+  assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: pending }).pass.verdict, 'pending');
+  const refused = env.call({ action: 'checkin', passcode: V, bookingId: pending });
+  assert.equal(refused.code, 'NOT_CONFIRMED');
+  assert.equal(bookingRow(env, pending)['Checked In At'], '');
+
+  env.call({ action: 'adminReject', passcode: env.props.ADMIN_PASSCODE, bookingId: pending, reason: 'x' });
+  assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: pending }).pass.verdict, 'rejected');
+
+  assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: 'LH-ZZZZZ' }).code, 'NOT_FOUND');
+  assert.equal(env.call({ action: 'checkinLookup', passcode: V, bookingId: 'hello' }).code, 'BAD_ID');
+  assert.equal(env.call({ action: 'checkinLookup', passcode: 'wrong', bookingId: solo }).code, 'UNAUTHORISED');
 });

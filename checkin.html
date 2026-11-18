@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Door check-in · Lil' Hoppers</title>
+<meta name="theme-color" content="#4E2F92">
+<link rel="icon" href="assets/img/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/book.css">
+<link rel="stylesheet" href="assets/css/checkin.css">
+</head>
+<body class="bk-body">
+<div class="bk-page ci-page">
+
+<header class="ci-header">
+<img src="assets/img/logo.png" alt="Lil' Hoppers" class="ci-logo">
+<span class="ci-title">Door check-in</span>
+<button type="button" class="ci-logout" id="logout" hidden>Log out</button>
+</header>
+
+<main class="ci-main">
+<p class="bk-demo" id="demoBanner" hidden>Demo mode: the passcode is <strong>demo</strong> and nothing is saved.</p>
+
+<!-- 1. passcode (once per phone) -->
+<section class="ci-screen" id="screenLogin" hidden aria-labelledby="loginTitle">
+<div class="bk-card ci-card">
+<h1 id="loginTitle">Volunteer check-in</h1>
+<p class="bk-muted">Enter the volunteer passcode to start scanning tickets. This phone will remember it.</p>
+<form id="loginForm" class="ci-form" novalidate>
+<label class="ci-label" for="passcode">Passcode</label>
+<input class="ci-input" id="passcode" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
+<p class="bk-error" id="loginError" role="alert" hidden></p>
+<button type="submit" class="bk-btn" id="loginBtn">Start scanning</button>
+</form>
+</div>
+</section>
+
+<!-- 2. scanner -->
+<section class="ci-screen" id="screenScan" hidden aria-label="Scan a ticket">
+<div class="ci-camera" id="camera">
+<video id="video" playsinline muted aria-hidden="true"></video>
+<div class="ci-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+<p class="ci-camera-msg" id="cameraMsg" role="status">Starting the camera…</p>
+<button type="button" class="bk-btn ci-camera-btn" id="cameraBtn" hidden>Turn on the camera</button>
+</div>
+<p class="ci-hint">Point the camera at the QR in the family's confirmation email.</p>
+
+<form class="bk-card ci-card ci-manual" id="manualForm" novalidate>
+<label class="ci-label" for="manualId">No QR? Type the booking ID</label>
+<div class="ci-manual-row">
+<input class="ci-input" id="manualId" placeholder="LH-XXXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text">
+<button type="submit" class="bk-btn ci-look">Look up</button>
+</div>
+<p class="bk-error" id="manualError" role="alert" hidden></p>
+</form>
+</section>
+
+<!-- 3. result -->
+<section class="ci-screen" id="screenResult" hidden aria-live="polite" aria-labelledby="verdictTitle">
+<div class="ci-verdict" id="verdict" data-tone="ok">
+<span class="ci-verdict-icon" id="verdictIcon" aria-hidden="true">✓</span>
+<div>
+<h1 id="verdictTitle">Valid ticket</h1>
+<p id="verdictNote">Not checked in yet</p>
+</div>
+</div>
+
+<div class="bk-card ci-card ci-pass" id="pass">
+<p class="ci-allowed-label">Let in</p>
+<div class="ci-allowed">
+<div class="ci-tile"><strong id="kidsNum">0</strong><span id="kidsWord">kids</span></div>
+<div class="ci-tile"><strong id="adultsNum">0</strong><span id="adultsWord">grown-ups</span></div>
+</div>
+<p class="ci-adults-note" id="adultsNote"></p>
+
+<dl class="ci-facts">
+<div><dt>Booking</dt><dd id="factId"></dd></div>
+<div><dt>Parent</dt><dd id="factParent"></dd></div>
+<div><dt>Kids</dt><dd id="factKids"></dd></div>
+<div><dt>Slot</dt><dd><span id="factSlot"></span> <span class="ci-chip" id="slotChip" hidden></span></dd></div>
+<div><dt>Santa gifts</dt><dd id="factGifts"></dd></div>
+</dl>
+</div>
+
+<div class="ci-actions">
+<button type="button" class="bk-btn" id="checkinBtn">Check in</button>
+<button type="button" class="bk-btn ci-next" id="nextBtn">Scan next ticket</button>
+<button type="button" class="bk-link ci-undo" id="undoBtn" hidden>Undo check-in</button>
+<p class="bk-error" id="resultError" role="alert" hidden></p>
+</div>
+</section>
+</main>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/pricing.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/checkin.js"></script>
+</body>
+</html>

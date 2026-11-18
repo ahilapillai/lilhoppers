@@ -4,6 +4,7 @@ Booking site for the Lil' Hoppers Christmas Carnival (Sat 12 Dec 2026, Vata Vrik
 
 - **`index.html`**: the landing page, with the 3D tree that turns with the visitor's hand, snow and fairy lights.
 - **`book.html`**: the booking flow. Parents pick a slot and add-ons and pay by UPI QR on one page (they can still change things while paying), then share proof of payment and get a ticket.
+- **`checkin.html`**: the volunteer door check-in page (`https://lilhoppers.co/checkin`). Volunteers scan the entry QR from the confirmation email and see who is allowed in.
 - **`admin.html`**: the admin page (`https://lilhoppers.co/admin`). Shows slot counts and capacity, and every booking with the parent's details, itemized payment, screenshot and screenshot check. Admins verify or reject payments here.
 - **`apps-script/`**: the backend, a Google Apps Script web app. It stores bookings in Google Sheets, saves screenshots to Google Drive, and sends email from hello.lilhoppers@gmail.com.
 - **`docs/PRD.md`**: the product requirements.
@@ -46,11 +47,16 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 - **Changing capacities:** use the admin page, or edit the **Slots** tab.
 - **Rejecting a booking, even a verified one:** click **Reject** on the admin page, or pick **Rejected** in the booking's **Status** dropdown in the sheet. Its places go back on sale straight away, and the parent gets an email saying the payment couldn't be verified, asking them to email the payment screenshot to hello.lilhoppers@gmail.com (sent once per booking).
 - **Confirming a booking:** click **Send confirmation** on the admin page, or pick **Verified** in its **Status** dropdown in the sheet. Either way the parent gets the confirmation email (only once), and the amount received is filled in as the expected total unless you've typed one.
+- **Door check-in:** the confirmation email has an entry QR, a link to `lilhoppers.co/checkin.html?b=<booking ID>`.
+  - Volunteers open **lilhoppers.co/checkin** on their phone and enter the **volunteer passcode** (setup creates it; it's shown at the top of the admin page and only opens the check-in page). The phone remembers it.
+  - They scan the QR with the page's camera (or with the phone's own camera app, which opens the page) or type the booking ID.
+  - They see a green **Valid ticket**, an amber **Already checked in**, or a red **Payment not verified yet / Booking rejected / Not paid**, with how many kids and grown-ups to let in (one parent per child, plus the extra parent if booked), the names, the slot and the Santa gifts.
+  - **Check in** records the time in the **Checked In At** column; scanning the same ticket again shows "Already checked in". **Undo check-in** fixes a mistake. The admin page shows arrivals per slot.
 - **Slots in the Bookings tab** are recorded by their time (the **Slot Time** column). If you change a slot's time in the **Slots** tab after bookings exist, change it in those bookings too.
 
 ## Tests
 
 ```bash
 node --test tests/*.test.js  # backend logic (pricing, capacity, holds, emails, admin) and the screenshot reader rules
-python3 tests/e2e.py         # browser tests of all three pages in demo mode, including real OCR on sample screenshots (needs Playwright + Chrome)
+python3 tests/e2e.py         # browser tests of every page in demo mode, including real OCR on sample screenshots and a fake camera scanning the entry QR (needs Playwright, Chrome and ffmpeg)
 ```

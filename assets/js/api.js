@@ -58,10 +58,20 @@
   function expire(db, now) { db.bookings.forEach(function (b) { if (b.status === 'Awaiting Payment' && !live(b, now)) b.status = 'Abandoned'; }); }
   function find(db, id) { return db.bookings.filter(function (b) { return b.bookingId === id; })[0]; }
 
+  function entryPass(db, b) {
+    var slot = db.slots.filter(function (x) { return x.id === b.slotId; })[0];
+    var extra = b.extraParent === 'Yes';
+    var verdict = b.status === 'Verified' ? (b.checkedInAt ? 'already' : 'valid') : b.status === 'Pending Verification' ? 'pending' : b.status === 'Rejected' ? 'rejected' : 'unpaid';
+    return { bookingId: b.bookingId, verdict: verdict, status: b.status, parentName: b.parentName || '', childNames: b.childNames || '',
+      children: b.children, parentsIncluded: b.children, extraParent: extra, grownUps: b.children + (extra ? 1 : 0), giftQty: b.giftQty || 0,
+      slotId: b.slotId, slotLabel: slot ? slot.label : '', slotTime: b.slotTime, checkedInAt: b.checkedInAt || '' };
+  }
+
   function demoCall(p) {
     var db = load(), now = Date.now(), out;
     var isAdmin = /^admin/.test(p.action);
-    if (isAdmin && p.passcode !== 'demo') return { ok: false, code: 'UNAUTHORISED', error: 'Wrong passcode. In demo mode the passcode is "demo".' };
+    var isStaff = /^(staffCheck|checkin)/.test(p.action);
+    if ((isAdmin || isStaff) && p.passcode !== 'demo') return { ok: false, code: 'UNAUTHORISED', error: 'Wrong passcode. In demo mode the passcode is "demo".' };
     if (p.action === 'availability') {
       var u0 = usage(db, now);
       out = { ok: true, prices: cfg.PRICES, maxChildren: cfg.MAX_CHILDREN, holdMinutes: cfg.HOLD_MINUTES,
@@ -109,11 +119,13 @@
       var u1 = usage(db, now), tc = 0, tt = 0;
       out = { ok: true, prices: cfg.PRICES, slots: db.slots.map(function (sl) {
         var x = u1[sl.id]; tc += sl.capacity; tt += x.total;
-        return { id: sl.id, label: sl.label, time: sl.time, capacity: sl.capacity, verified: x.verified, pending: x.pending, holds: x.holds, total: x.total, soldOut: x.total >= sl.capacity };
+        var arrived = db.bookings.reduce(function (n, bk) { return n + (bk.slotId === sl.id && bk.status === 'Verified' && bk.checkedInAt ? bk.children : 0); }, 0);
+        return { id: sl.id, label: sl.label, time: sl.time, capacity: sl.capacity, verified: x.verified, pending: x.pending, holds: x.holds, total: x.total, arrived: arrived, soldOut: x.total >= sl.capacity };
       }), bookings: db.bookings.slice().reverse().map(function (bk) {
         var copy = Object.assign({}, bk); if (copy.status === 'Awaiting Payment' && !live(copy, now)) copy.status = 'Abandoned (hold expired)'; return copy;
       }) };
       out.totals = { capacity: tc, counted: tt };
+      out.checkin = { url: location.origin + '/checkin', passcode: 'demo' };
     } else if (p.action === 'adminVerify') {
       var v = find(db, p.bookingId);
       if (!v || v.status !== 'Pending Verification') return { ok: false, code: 'BAD_STATE', error: 'Only bookings that are Pending Verification can be verified.' };
@@ -130,6 +142,23 @@
       var cap = Number(p.capacity), sl2 = db.slots.filter(function (x) { return x.id === p.slotId; })[0];
       if (!sl2 || !(cap >= 0 && cap <= 1000 && Math.floor(cap) === cap)) return { ok: false, code: 'BAD_CAPACITY', error: 'Capacity must be a whole number from 0 to 1000.' };
       sl2.capacity = cap; out = { ok: true };
+    } else if (p.action === 'staffCheck') {
+      out = { ok: true };
+    } else if (isStaff) {
+      // Same rules as the check-in API in Code.gs.
+      var m = String(p.bookingId || '').toUpperCase().match(/LH-[A-Z0-9]{3,12}/);
+      if (!m) return { ok: false, code: 'BAD_ID', error: "That doesn't look like a booking ID. It starts with LH-." };
+      var c = find(db, m[0]);
+      if (!c) return { ok: false, code: 'NOT_FOUND', error: 'No booking found for ' + m[0] + '.' };
+      if (p.action === 'checkin') {
+        if (c.status !== 'Verified') return { ok: false, code: 'NOT_CONFIRMED', error: "This booking isn't confirmed, so it can't be checked in.", pass: entryPass(db, c) };
+        if (c.checkedInAt) return { ok: true, already: true, pass: entryPass(db, c) };
+        c.checkedInAt = new Date(now).toISOString();
+        out = { ok: true, pass: Object.assign(entryPass(db, c), { verdict: 'checkedIn' }) };
+      } else {
+        if (p.action === 'checkinUndo') c.checkedInAt = '';
+        out = { ok: true, pass: entryPass(db, c) };
+      }
     } else {
       return { ok: false, code: 'BAD_ACTION', error: 'Unknown action.' };
     }

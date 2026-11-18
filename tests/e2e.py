@@ -285,6 +285,85 @@ with sync_playwright() as p:
     bk.screenshot(path=f'{OUT}/book-soldout.png', full_page=True)
     browser.close()
 
+    # ---------- volunteer door check-in (fake camera plays the entry QR) ----------
+    import subprocess
+    from PIL import Image
+    Y4M = '/tmp/lh-cam.y4m'
+    if os.path.exists(Y4M): os.remove(Y4M)
+    cam = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+        '--use-file-for-fake-video-capture=' + Y4M, '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'])
+    cctx = cam.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    cctx.grant_permissions(['camera'], origin=BASE)
+    v = cctx.new_page(); verrors = []
+    v.on('pageerror', lambda e: verrors.append(str(e)))
+    v.goto(BASE + '/book.html'); v.wait_for_selector('.bk-slot')
+    ids = v.evaluate('''async () => {
+      const A = window.LH_API, out = {};
+      const mk = async (n, extra, verify) => {
+        const h = await A.call('createHold', { slotId: 'S2', children: n, extraParent: extra, giftQty: n });
+        await A.call('submitBooking', { bookingId: h.bookingId, parentName: 'Meera Iyer', email: 'm@example.com', phone: '9845012345', childNames: n === 2 ? ['Ira', 'Kabir'] : ['Zoya'], utr: '412345678901' });
+        if (verify) await A.call('adminVerify', { passcode: 'demo', bookingId: h.bookingId, verifiedAmount: h.amounts.total });
+        return h.bookingId; };
+      out.family = await mk(2, true, true); out.solo = await mk(1, false, true); out.pending = await mk(1, false, false);
+      return out; }''')
+    subprocess.run(['node', os.path.join(ROOT, 'tests', 'make_qr.js'), 'https://lilhoppers.co/checkin.html?b=' + ids['family'], '/tmp/lh-cam-qr.gif'], check=True)
+    Image.open('/tmp/lh-cam-qr.gif').convert('RGB').save('/tmp/lh-cam-qr.png')
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-loop', '1', '-i', '/tmp/lh-cam-qr.png', '-t', '4', '-r', '10',
+        '-vf', 'scale=480:480,pad=640:480:80:0:white,format=yuv420p', '-f', 'yuv4mpegpipe', Y4M], check=True)
+
+    v.goto(BASE + '/checkin.html'); v.wait_for_selector('#screenLogin:not([hidden])')
+    v.fill('#passcode', 'nope'); v.click('#loginBtn'); v.wait_for_selector('#loginError:not([hidden])')
+    check('Wrong passcode' in v.inner_text('#loginError'), 'checkin: wrong volunteer passcode refused')
+    v.fill('#passcode', 'demo'); v.click('#loginBtn')
+    v.wait_for_selector('#screenResult:not([hidden])', timeout=20000)
+    check(v.inner_text('#verdictTitle') == 'Valid ticket' and v.inner_text('#factId') == ids['family'], 'checkin: camera scan of the entry QR finds the booking')
+    check((v.inner_text('#kidsNum'), v.inner_text('#adultsNum')) == ('2', '3') and v.inner_text('#adultsNote') == '2 parents included + 1 extra parent', 'checkin: shows 2 kids, 3 grown-ups incl. the extra parent (%s)' % v.inner_text('#adultsNote'))
+    check(v.inner_text('#factKids') == 'Ira, Kabir' and v.inner_text('#factGifts') == '2 gifts' and 'Slot 2' in v.inner_text('#factSlot'), 'checkin: names, gifts and slot shown')
+    v.screenshot(path=f'{OUT}/checkin-valid.png', full_page=True)
+    v.click('#checkinBtn'); v.wait_for_function("document.getElementById('verdictTitle').textContent === 'Checked in'")
+    check(v.locator('#checkinBtn').is_hidden() and v.locator('#undoBtn').is_visible(), 'checkin: checked in; undo offered')
+    v.click('#nextBtn'); v.wait_for_selector('#screenScan:not([hidden])'); v.wait_for_timeout(1500)
+    check(v.locator('#screenScan').is_visible(), 'checkin: the same QR is ignored for a moment after "Scan next"')
+    v.wait_for_selector('#screenResult:not([hidden])', timeout=15000)
+    check(v.inner_text('#verdictTitle') == 'Already checked in', 'checkin: scanning a used ticket again says "Already checked in"')
+    v.screenshot(path=f'{OUT}/checkin-already.png', full_page=True)
+    v.click('#undoBtn'); v.wait_for_function("document.getElementById('verdictTitle').textContent === 'Valid ticket'")
+    check(True, 'checkin: undo makes the ticket valid again')
+
+    # typed booking ID, a single parent, and an unpaid one (camera blocked on this page)
+    v.close(); v = cctx.new_page(); v.on('pageerror', lambda e: verrors.append(str(e)))
+    v.add_init_script("navigator.mediaDevices.getUserMedia = () => Promise.reject(new Error('NotAllowedError'))")
+    v.goto(BASE + '/checkin.html'); v.wait_for_selector('#screenScan:not([hidden])')
+    check(v.locator('#screenLogin').is_hidden(), 'checkin: the phone remembers the passcode')
+    v.wait_for_selector('#cameraBtn:not([hidden])')
+    check('Allow camera access' in v.inner_text('#cameraMsg'), 'checkin: blocked camera explains and offers typing the ID')
+    v.screenshot(path=f'{OUT}/checkin-nocamera.png')
+    v.fill('#manualId', ids['solo'].replace('LH-', '').lower()); v.click('#manualForm button')
+    v.wait_for_function("document.getElementById('factId').textContent === %r" % ids['solo'], timeout=8000)
+    check((v.inner_text('#kidsNum'), v.inner_text('#kidsWord'), v.inner_text('#adultsNum'), v.inner_text('#adultsWord')) == ('1', 'kid', '1', 'grown-up') and 'no extra parent' in v.inner_text('#adultsNote'), 'checkin: typed ID works; 1 kid + 1 grown-up, no extra parent')
+    v.click('#nextBtn'); v.fill('#manualId', ids['pending']); v.click('#manualForm button')
+    v.wait_for_function("document.getElementById('factId').textContent === %r" % ids['pending'], timeout=8000)
+    check('not verified' in v.inner_text('#verdictTitle') and v.locator('#checkinBtn').is_hidden() and v.get_attribute('#verdict', 'data-tone') == 'stop', 'checkin: unverified booking is a red "Payment not verified yet" with no Check in button')
+    v.screenshot(path=f'{OUT}/checkin-pending.png', full_page=True)
+    v.click('#nextBtn'); v.fill('#manualId', 'LH-NOPE1'); v.click('#manualForm button')
+    v.wait_for_selector('#manualError:not([hidden])')
+    check('No booking found' in v.inner_text('#manualError'), 'checkin: unknown ID says no booking found')
+
+    # opened from the phone's own camera app: the link goes straight to the pass
+    v.close(); v = cctx.new_page(); v.on('pageerror', lambda e: verrors.append(str(e)))
+    v.goto(BASE + '/checkin.html?b=' + ids['family']); v.wait_for_selector('#screenResult:not([hidden])', timeout=10000)
+    check(v.inner_text('#factId') == ids['family'] and 'b=' not in v.url, 'checkin: the QR link opens the pass directly')
+    v.screenshot(path=f'{OUT}/checkin-scan-link.png')
+    v.click('#checkinBtn'); v.wait_for_function("document.getElementById('verdictTitle').textContent === 'Checked in'")
+
+    # admin sees the door link, the passcode and who has arrived
+    ad = cctx.new_page(); ad.goto(BASE + '/admin.html'); ad.fill('#passcode', 'demo'); ad.click('#login button'); ad.wait_for_selector('#dash:not([hidden])')
+    door = ad.inner_text('#door')
+    check('/checkin' in door and 'Volunteer passcode: demo' in door and 'Arrived so far: 2' in door, 'admin: shows the check-in link, volunteer passcode and arrivals (%s)' % door.replace('\n', ' '))
+    check('Checked in' in ad.inner_text('#rows'), 'admin: booking shows "Checked in"')
+    check(not verrors, 'checkin: no script errors ' + str(verrors[:2]))
+    cam.close()
+
 httpd.shutdown()
 print('\n%d failure(s)' % len(failures))
 sys.exit(1 if failures else 0)

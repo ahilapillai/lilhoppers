@@ -27,6 +27,11 @@ input,select,textarea{font:inherit;color:inherit}
 .ad-error{margin:0;background:#FDEEEC;color:#9F2A1E;border-radius:10px;padding:10px 12px;font-weight:700}
 .ad-warn{margin:0;background:#FFF6D1;color:#5B4A00;border-radius:10px;padding:10px 12px;font-weight:700}
 .ad-help{margin:0;font-size:13px;color:#6E6482;line-height:1.5}
+.ad-door{margin:0 0 18px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;background:#F1ECFA;border:1px solid #DCD0F0;border-radius:12px;padding:12px 16px;font-size:15px}
+.ad-door strong{font-family:ui-monospace,Menlo,monospace;font-size:16px;letter-spacing:.06em}
+.ad-door a{font-weight:800;color:#4E2F92}
+.ad-arrived{margin:6px 0 0;font-size:13px;font-weight:700;color:#1D6B40}
+.ad-b-in{background:#1F8A4C;color:#fff}
 .ad-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;margin:8px 0 14px}
 .ad-section-head h2{margin:0;font-family:'Fredoka',ui-rounded,sans-serif;font-weight:600;font-size:24px}
 .ad-totals{margin:0;font-weight:800}

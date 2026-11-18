@@ -122,9 +122,10 @@ All emails are sent from **hello.lilhoppers@gmail.com**. The backend runs under 
 | Email | When | Contents |
 |---|---|---|
 | Pending verification | Automatically, as soon as proof is submitted | Booking ID, slot, children, itemized amount, the payment reference received, and a clear note that the booking is **not confirmed yet** |
-| Booking confirmed | Only after an admin verifies the payment | Booking ID, slot, date, venue and map link, children, what each ticket admits, itemized amount, amount received, and "show this email at the entrance" |
+| Booking confirmed | Only after an admin verifies the payment | Booking ID, slot, date, venue and map link, children, what each ticket admits, itemized amount, amount received, and the **entry QR** ("Show this QR at the entrance", with the booking ID and who it lets in) |
+| Payment not verified | When an admin rejects the booking (admin page or sheet) | That the payment couldn't be verified, and a request to email the payment screenshot to hello.lilhoppers@gmail.com with the booking ID |
 
-No email is sent for rejections. The admin contacts the parent directly, for example to arrange a refund.
+The entry QR is drawn by the backend (no outside service) and embedded in the email. It encodes `https://lilhoppers.co/checkin.html?b=<booking ID>`.
 
 ## 8. Admin
 
@@ -142,6 +143,22 @@ The admin page is protected by a passcode stored on the server. It shows:
 - **Actions:**
   - **Verify:** the admin enters the amount actually received (defaults to the expected amount, and warns if they differ). This sets the booking to Verified and sends the confirmation email.
   - **Reject:** requires a reason.
+
+## 8a. Door check-in (volunteers)
+
+- **Page:** `lilhoppers.co/checkin`, protected by a **volunteer passcode** (separate from the admin passcode, which also works). The passcode is created by setup and shown on the admin page. A phone remembers it until "Log out".
+- **Scanning:** the page's own camera scanner (the phone's built-in QR reader where available, otherwise a bundled reader), or the phone's camera app (the QR opens the page with the booking), or typing the booking ID.
+- **What the volunteer sees:**
+
+  | Booking | Banner | Action |
+  |---|---|---|
+  | Verified, not checked in | Green "Valid ticket" | **Check in** |
+  | Verified, checked in | Amber "Already checked in at 2:14 PM" | Undo check-in |
+  | Pending Verification | Red "Payment not verified yet: don't let in yet" | — |
+  | Rejected / Abandoned | Red "Booking rejected" / "Not paid" | — |
+
+  Below the banner: **Let in N kids and M grown-ups** (one parent per child, plus "1 extra parent" when booked), the booking ID, parent, children's names, slot (flagged on the day if the slot hasn't started yet or has ended) and Santa gifts.
+- **Records:** check-in time in the **Checked In At** column. The admin page shows arrivals per slot and a "Checked in" badge on each booking.
 
 ## 9. Data and integrations
 

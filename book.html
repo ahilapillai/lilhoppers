@@ -103,7 +103,10 @@
 <span class="bk-upi-label">Or pay to this UPI ID</span>
 <div class="bk-upi-row"><code id="upiId"></code><button type="button" class="bk-copy" id="copyUpi" aria-label="Copy UPI ID">Copy</button></div>
 </div>
-<a class="bk-btn bk-btn-ghost" id="upiLink" href="#">Open a UPI app on this phone</a>
+<div class="bk-onphone">
+<button type="button" class="bk-btn bk-btn-ghost" id="saveQr">Save QR image</button>
+<p class="bk-muted bk-center">Paying on this phone? Save the QR, then in GPay, PhonePe or Paytm tap <strong>Scan</strong> and pick it from your gallery. Or copy the UPI ID and pay <strong id="payTotalNote"></strong>.</p>
+</div>
 <p class="bk-error" id="holdExpired" role="alert" hidden>Your 20-minute hold has run out. If you've already paid, tap Payment done and share your proof. We'll keep your booking if the places are still free. If you haven't paid yet, <button type="button" class="bk-link bk-link-inline" id="changeBooking">start again</button>.</p>
 <button type="button" class="bk-btn" id="paid">Payment done<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
 <p class="bk-muted bk-center">Tap this once your payment has gone through.</p>

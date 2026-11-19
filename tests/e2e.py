@@ -140,7 +140,7 @@ with sync_playwright() as p:
     page.click('#toPay')
     page.wait_for_selector('#payPanel:not([hidden])'); page.wait_for_timeout(900)
     check(page.locator('#step-choose').is_visible() and page.locator('#toPay').is_hidden(), 'book: QR appears on the same page, next to the choices')
-    href = page.get_attribute('#upiLink', 'href')
+    href = page.get_attribute('#qr', 'data-uri')
     check(href.startswith('upi://pay?pa=ahilapil.26-1@okicici&pn=Lil%20Hoppers&am=2934.00&cu=INR&tn=LH-'), 'book: UPI link uses the final total and UPI ID')
     qr = decode_qr(page.locator('#qr').screenshot())
     check(qr == href, 'book: QR code decodes to the same UPI payment link (%s)' % qr[:60])
@@ -148,14 +148,14 @@ with sync_playwright() as p:
     first_id = page.inner_text('#payPanel [data-fill="bookingId"]')
     # Edit while paying: one more child and no extra parent. Same booking, new total, new QR.
     page.click('#kidsPlus'); page.uncheck('#extraParent')
-    page.wait_for_function("() => !document.getElementById('payPanel').classList.contains('is-updating') && /am=3534\\.00/.test(document.getElementById('upiLink').href)", timeout=8000)
+    page.wait_for_function("() => !document.getElementById('payPanel').classList.contains('is-updating') && /am=3534\\.00/.test(document.getElementById('qr').dataset.uri)", timeout=8000)
     page.wait_for_timeout(500)  # QR un-blurs
     check(page.inner_text('#chooseTotal') == '₹3,534', 'book: editing while paying updates the total (got %s)' % page.inner_text('#chooseTotal'))
-    href2 = page.get_attribute('#upiLink', 'href')
+    href2 = page.get_attribute('#qr', 'data-uri')
     check('am=3534.00' in href2 and decode_qr(page.locator('#qr').screenshot()) == href2, 'book: QR follows the edit')
     check(page.inner_text('#payPanel [data-fill="bookingId"]') == first_id, 'book: editing keeps the same booking ID (%s)' % first_id)
     page.click('#kidsMinus'); page.check('#extraParent')
-    page.wait_for_function("() => !document.getElementById('payPanel').classList.contains('is-updating') && /am=2934\\.00/.test(document.getElementById('upiLink').href)", timeout=8000)
+    page.wait_for_function("() => !document.getElementById('payPanel').classList.contains('is-updating') && /am=2934\\.00/.test(document.getElementById('qr').dataset.uri)", timeout=8000)
     page.screenshot(path=f'{OUT}/book-pay.png', full_page=True)
     page.reload(); page.wait_for_selector('#payPanel:not([hidden])')
     check(page.inner_text('#chooseTotal') == '₹2,934' and page.locator('#qr svg').count() == 1, 'book: payment survives a reload')
@@ -301,6 +301,22 @@ with sync_playwright() as p:
     check(not re.search(r'\b(32|33|35|remaining|left:)\b', bk.inner_text('#slotList')), 'book: no counts or capacity shown')
     bk.screenshot(path=f'{OUT}/book-soldout.png', full_page=True)
     browser.close()
+
+    # ---------- paying on the same phone: save the QR image (payment links to a personal UPI ID are refused by UPI apps) ----------
+    mb = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox', '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'])
+    mctx = mb.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, is_mobile=True, has_touch=True, accept_downloads=True)
+    mp = mctx.new_page()
+    mp.goto(BASE + '/book.html'); mp.wait_for_selector('.bk-slot')
+    mp.click('.bk-slot >> nth=0'); mp.click('#toPay'); mp.wait_for_selector('#payPanel:not([hidden])'); mp.wait_for_timeout(900)
+    check(mp.locator('#saveQr').is_visible() and 'Open a UPI app' not in mp.inner_text('#payPanel'), 'phone: "Save QR image" instead of the "Open a UPI app" link')
+    check('pick it from your gallery' in mp.inner_text('.bk-onphone') and '₹938' in mp.inner_text('.bk-onphone'), 'phone: explains scanning the saved QR or copying the UPI ID, with the amount')
+    with mp.expect_download() as dl:
+        mp.click('#saveQr')
+    saved = dl.value.path()
+    uri = mp.get_attribute('#qr', 'data-uri')
+    check(decode_qr(open(saved, 'rb').read()) == uri, 'phone: the saved QR image scans to the same UPI payment (%s)' % uri[:50])
+    mp.locator('#chooseCard').screenshot(path=f'{OUT}/book-pay-phone.png')
+    mb.close()
 
     # ---------- volunteer door check-in (fake camera plays the entry QR) ----------
     import subprocess

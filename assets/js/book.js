@@ -287,7 +287,8 @@
     var h = state.hold;
     fill('bookingId', h.bookingId);
     $('upiId').textContent = h.upi.id;
-    $('upiLink').href = h.upi.uri;
+    $('qr').dataset.uri = h.upi.uri;
+    $('payTotalNote').textContent = P.rupees(h.amounts.total);
     if (shownUri !== h.upi.uri) {
       shownUri = h.upi.uri;
       try {
@@ -316,6 +317,40 @@
     tick();
     timer = setInterval(tick, 1000);
   }
+
+  /* "Save QR image": UPI apps refuse payment links to a personal UPI ID, but scanning a saved QR from the
+     gallery works. Phones get the share sheet (Save Image → Photos); others download a PNG. */
+  function qrPng() {
+    var h = state.hold, qr = qrcode(0, 'M');
+    qr.addData(h.upi.uri); qr.make();
+    var n = qr.getModuleCount(), cell = 14, quiet = 4 * cell, size = n * cell + quiet * 2;
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size + 120;
+    var x = c.getContext('2d');
+    x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = '#000000';
+    for (var r = 0; r < n; r++) for (var k = 0; k < n; k++) if (qr.isDark(r, k)) x.fillRect(quiet + k * cell, quiet + r * cell, cell, cell);
+    x.fillStyle = '#2A1D45'; x.textAlign = 'center';
+    x.font = '700 34px Nunito, Arial, sans-serif';
+    x.fillText('Pay ' + P.rupees(h.amounts.total) + " to Lil' Hoppers", size / 2, size + 44);
+    x.font = '600 26px Nunito, Arial, sans-serif'; x.fillStyle = '#5E5470';
+    x.fillText('Booking ' + h.bookingId + ' · ' + h.upi.id, size / 2, size + 88);
+    return new Promise(function (resolve) { c.toBlob(resolve, 'image/png'); });
+  }
+  $('saveQr').addEventListener('click', function () {
+    var btn = this, name = state.hold.bookingId + '-pay.png';
+    qrPng().then(function (blob) {
+      var file = window.File ? new File([blob], name, { type: 'image/png' }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        return navigator.share({ files: [file], title: "Lil' Hoppers payment QR" }).catch(function () {});
+      }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      btn.textContent = 'Saved'; setTimeout(function () { btn.textContent = 'Save QR image'; }, 1800);
+    });
+  });
 
   $('copyUpi').addEventListener('click', function () {
     var btn = this;

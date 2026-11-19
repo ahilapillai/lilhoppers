@@ -11,7 +11,7 @@
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.setClearColor(0x000000, 0);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = T.PCFSoftShadowMap;
+    renderer.shadowMap.type = T.VSMShadowMap; // blurred, soft-edged shadows
 
     const C = (hex) => new T.Color(hex);
     const scene = new T.Scene();
@@ -44,19 +44,25 @@
     scene.environment = pmrem.fromScene(envScene, 0.035).texture;
     pmrem.dispose();
 
-    scene.add(new T.HemisphereLight(0xfff6e8, 0x3b2a5c, 0.35));
-    const key = new T.DirectionalLight(0xfff1dc, 1.05);
+    scene.add(new T.HemisphereLight(0xfff6e8, 0x3b2a5c, 0.42));
+    // The key light is split: part of it casts soft shadows, part only lights, so shadows stay gentle.
+    const keyFill = new T.DirectionalLight(0xfff1dc, 0.42);
+    keyFill.position.set(-4.5, 9, 8);
+    scene.add(keyFill);
+    const key = new T.DirectionalLight(0xfff1dc, 0.62);
     key.position.set(-4.5, 9, 8);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
+    key.shadow.radius = 9;
+    key.shadow.blurSamples = 16;
     key.shadow.camera.left = -4.2;
     key.shadow.camera.right = 4.2;
     key.shadow.camera.top = 7;
     key.shadow.camera.bottom = -2.5;
     key.shadow.camera.near = 1;
     key.shadow.camera.far = 30;
-    key.shadow.bias = -0.0006;
-    key.shadow.normalBias = 0.025;
+    key.shadow.bias = -0.0004;
+    key.shadow.normalBias = 0.02;
     scene.add(key);
     const rim = new T.DirectionalLight(0xd9c2ff, 0.55);
     rim.position.set(5, 5, -6);
@@ -96,7 +102,9 @@
     stripes.repeat.set(1.4, 1.4);
     const mats = {
       leaf: std('#55A346', 0.78, 0, { envMapIntensity: 0.5 }),
-      leafIn: std('#52A044', 0.78, 0, { envMapIntensity: 0.45 }),
+      // Tiers and leaf drops carry soft baked shading (vertex colours) instead of hard drop-on-drop shadows.
+      skirt: std('#5AAA4B', 0.8, 0, { envMapIntensity: 0.5, vertexColors: true }),
+      leafIn: std('#58A84A', 0.8, 0, { envMapIntensity: 0.45, vertexColors: true }),
       trunk: std('#6E3F25', 0.9),
       star: std('#F7C64A', 0.24, 0.75, { emissive: C('#8A5A00'), emissiveIntensity: 0.35 }),
       gold: std('#E2B04A', 0.28, 0.85),
@@ -192,6 +200,17 @@
         pos.setXYZ(i, Math.cos(th) * nr, v.y, Math.sin(th) * nr);
       }
       g.computeVertexNormals();
+      // Soft shading: darker up under the tier above and between the drops, lighter on the pointed tips.
+      const col = [];
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i);
+        const r = Math.sqrt(v.x * v.x + v.z * v.z) / t.R;
+        const a = t.n * Math.atan2(v.z, v.x) - t.phase * t.n;
+        const tip = Math.pow((1 - Math.cos(a)) / 2, 2);
+        const k = 0.62 + 0.3 * Math.min(1, Math.max(0, (r - 0.35) / 0.65)) + 0.08 * tip;
+        col.push(k, k, k);
+      }
+      g.setAttribute('color', new T.Float32BufferAttribute(col, 3));
       return g;
     };
     const dropGeo = (() => {
@@ -203,10 +222,20 @@
         pos.setXYZ(i, pos.getX(i) * f, y, pos.getZ(i) * f);
       }
       g.computeVertexNormals();
+      // Soft, rounded shading like clay: lighter on the top and the front, darker underneath and where it
+      // tucks into the tree. This replaces the hard shadows the drops used to throw on each other.
+      const col = [], nrm = g.attributes.normal;
+      for (let i = 0; i < pos.count; i++) {
+        const up = (pos.getY(i) + 1) / 2;                  // 0 bottom … 1 top
+        const front = (nrm.getZ(i) + 1) / 2;               // 0 into the tree … 1 facing out
+        const k = 0.66 + 0.2 * Math.pow(up, 0.8) + 0.14 * front;
+        col.push(k, k, k);
+      }
+      g.setAttribute('color', new T.Float32BufferAttribute(col, 3));
       return g;
     })();
     tiers.forEach((t, ti) => {
-      const skirt = new T.Mesh(makeSkirt(t), mats.leaf);
+      const skirt = new T.Mesh(makeSkirt(t), mats.skirt);
       skirt.position.y = t.rim;
       spin.add(skirt);
       tierMeshes[ti].push(skirt);
@@ -428,6 +457,8 @@
     spin.traverse((m) => { if (m.isMesh && m.geometry && m.geometry.boundingSphere === null) m.geometry.computeBoundingSphere(); });
     spin.traverse((m) => { if (m.isMesh && m.geometry.boundingSphere.radius * Math.max(m.scale.x, m.scale.y, m.scale.z) < 0.25) m.castShadow = false; });
     star.castShadow = false;
+    // Leaf drops don't cast: each tier still shades the one below it, without blotchy drop-on-drop shadows.
+    tierMeshes.forEach((list) => list.slice(1).forEach((d) => { d.castShadow = false; }));
 
     const resize = () => {
       const w = canvas.clientWidth;

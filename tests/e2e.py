@@ -84,6 +84,10 @@ with sync_playwright() as p:
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.goto(BASE + '/book.html')
+    page.wait_for_function("(document.getElementById('favicon').getAttribute('href') || '').startsWith('data:image/png')", timeout=5000)
+    check(True, 'tab icon: animates (frames drawn into the tab icon)')
+    page.wait_for_function("document.getElementById('favicon').getAttribute('href') === 'assets/img/favicon-64.png'", timeout=6000)
+    check(True, 'tab icon: ends on the static logo icon')
     page.wait_for_selector('.bk-slot')
     check(page.locator('#demoBanner').is_visible(), 'book: demo banner shown when no API_URL')
     total = lambda: page.inner_text('#chooseTotal')

@@ -37,6 +37,10 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-group-kids{flex-direction:row;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;column-gap:20px}
 .bk-group-kids .bk-legend{width:auto;margin:10px 0 0}
 .bk-group-kids .bk-row{margin-left:auto;align-items:flex-end;text-align:right}
+.bk-deal{margin:0;font-size:14px;line-height:1.4;color:#D2C8E6;max-width:300px}
+.bk-deal.is-on{color:#B9F2CC}
+.bk-deal strong{color:#FCD419;letter-spacing:.04em}
+.bk-lines .bk-line-deal dt,.bk-lines .bk-line-deal dd{color:#8FE3AD;font-weight:800}
 .bk-group-sep{margin-top:22px;padding-top:22px;border-top:1px solid rgba(255,255,255,.18)}
 .bk-legend{float:left;width:100%;padding:0;margin:0 0 4px;font-family:'Fredoka',ui-rounded,sans-serif;font-weight:600;font-size:21px}
 .bk-legend+*{clear:both}

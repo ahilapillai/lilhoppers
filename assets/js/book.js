@@ -40,13 +40,16 @@
   function showError(el, msg) { el.textContent = msg || ''; el.hidden = !msg; }
 
   function renderLines(dl, a) {
-    var rows = [[plural(a.children, 'kid', 'kids') + ' + ' + plural(a.children, 'parent', 'parents'), P.rupees(a.ticketSubtotal)]];
+    var rows = [[plural(a.children, 'kid', 'kids') + ' + ' + plural(a.children, 'parent', 'parents'), P.rupees(a.discount ? a.ticketsAtFull : a.ticketSubtotal)]];
     if (a.extraParent) rows.push(['Extra parent', P.rupees(a.extraParentCharge)]);
     if (a.giftQty) rows.push(['Gift from Santa × ' + a.giftQty, P.rupees(a.giftSubtotal)]);
     if (a.bookingFee) rows.push(['Booking & support fee', P.rupees(a.bookingFee)]);
+    // Group deal, applied automatically: shown last, just above the total.
+    if (a.discount) rows.push(['Code ' + a.couponCode + ' auto-applied', '−' + P.rupees(a.discount), 'bk-line-deal']);
     dl.innerHTML = '';
     rows.forEach(function (r) {
       var d = document.createElement('div');
+      if (r[2]) d.className = r[2];
       var dt = document.createElement('dt'); dt.textContent = r[0];
       var dd = document.createElement('dd'); dd.textContent = r[1];
       d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
@@ -136,6 +139,7 @@
     $('kidsMinus').disabled = n <= 1;
     $('kidsPlus').disabled = n >= cfg.MAX_CHILDREN;
     $('kidsNote').textContent = admitLabel(n, state.extraParent);
+    renderDeal(n);
     $('extraParent').checked = state.extraParent;
     $('giftOn').checked = state.giftOn;
     $('photoOk').checked = !!state.photoOk;
@@ -148,6 +152,23 @@
     $('giftQtyRow').hidden = !(state.giftOn && n > 1);
     renderSummary();
   }
+
+  /* Group deals, under "1 kid + 1 parent": what's applied now, and what the next one is. */
+  function renderDeal(n) {
+    var prices = state.prices || cfg.PRICES;
+    var deals = (prices.GROUP_DEALS || []).slice().sort(function (a, b) { return a.minChildren - b.minChildren; });
+    var box = $('kidsDeal');
+    if (!deals.length) { box.hidden = true; return; }
+    var now = P.groupDeal(prices, n);
+    var next = deals.filter(function (d) { return d.minChildren > n && (!now || d.childPrice < now.childPrice); })[0];
+    var parts = [];
+    if (now) parts.push('<strong>' + esc(now.code) + '</strong> applied: ' + P.rupees(now.childPrice) + ' per child');
+    if (next) parts.push((now ? '' : 'Book ') + next.minChildren + '+ kids for ' + P.rupees(next.childPrice) + ' each' + (now ? '' : ' (' + esc(next.code) + ')'));
+    box.innerHTML = parts.join(' · ');
+    box.classList.toggle('is-on', !!now);
+    box.hidden = !parts.length;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   function renderSummary() {
     var a = localAmounts();

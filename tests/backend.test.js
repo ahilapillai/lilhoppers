@@ -109,8 +109,17 @@ test('price examples from the PRD', () => {
   assert.equal(ctx.computeAmounts(1, false, 1).total, 1237);
   assert.equal(ctx.computeAmounts(1, false, 0).total, 938);
   assert.equal(ctx.computeAmounts(1, true, 1).total, 1436);
+  // Group deals apply by themselves: LILHOP2 (₹799 each) from 2 kids, LILHOP5 (₹749 each) from 5.
   const three = ctx.computeAmounts(3, true, 2);
-  assert.deepEqual([three.ticketSubtotal, three.extraParentCharge, three.giftSubtotal, three.bookingFee, three.total], [2697, 199, 598, 39, 3533]);
+  assert.deepEqual([three.ticketsAtFull, three.discount, three.ticketSubtotal, three.extraParentCharge, three.giftSubtotal, three.bookingFee, three.total], [2697, 300, 2397, 199, 598, 39, 3233]);
+  const deal = (n) => { const a = ctx.computeAmounts(n, false, 0); return [a.childPrice, a.couponCode, a.discount]; };
+  assert.deepEqual(deal(1), [899, '', 0]);
+  assert.deepEqual(deal(2), [799, 'LILHOP2', 200]);
+  assert.deepEqual(deal(4), [799, 'LILHOP2', 400]);
+  assert.deepEqual(deal(5), [749, 'LILHOP5', 750]);
+  assert.deepEqual(deal(10), [749, 'LILHOP5', 1500]);
+  assert.equal(ctx.computeAmounts(2, false, 0).total, 2 * 799 + 39);
+  assert.equal(ctx.computeAmounts(5, true, 5).total, 5 * 749 + 199 + 5 * 299 + 39);
 });
 
 test('setup creates slots 32 / 33 / 35 = 100 and an admin passcode', () => {
@@ -213,7 +222,7 @@ test('editing a hold counts its own places only once, and a change that does not
   // Same 3 places, now with gifts: fits, because its own places aren't counted twice.
   const edited = env.call({ action: 'createHold', slotId: 'S1', children: 3, giftQty: 3, previousBookingId: mine.bookingId });
   assert.equal(edited.ok, true);
-  assert.equal(edited.amounts.total, 3 * 899 + 3 * 299 + 39);
+  assert.equal(edited.amounts.total, 3 * 799 + 3 * 299 + 39);
   // 4 children won't fit: refused, and the 3-child hold is still there.
   const tooMany = env.call({ action: 'createHold', slotId: 'S1', children: 4, giftQty: 0, previousBookingId: mine.bookingId });
   assert.equal(tooMany.code, 'NOT_ENOUGH_PLACES');
@@ -259,7 +268,9 @@ test('submitting proof: saves details, screenshot to Drive, sets Pending, sends 
   assert.match(env.mails[0].subject, /payment being checked/);
   assert.match(env.mails[0].htmlBody, /not confirmed yet/);
   assert.match(env.mails[0].htmlBody, /Booking &amp; support fee<\/td><td[^>]*>₹39/);
-  assert.match(env.mails[0].htmlBody, /₹2,136/);
+  assert.match(env.mails[0].htmlBody, /Code LILHOP2 applied \(₹799 per child\)/);
+  assert.match(env.mails[0].htmlBody, /−₹200/);
+  assert.match(env.mails[0].htmlBody, /₹1,936/);
 });
 
 test('screenshot check result is saved to the sheet and shown to admin; a failed check is refused', () => {
@@ -369,7 +380,7 @@ test('admin list carries the itemized payment breakdown for every booking', () =
   const b = env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE }).bookings[0];
   assert.deepEqual(
     [b.ticketSubtotal, b.extraParentCharge, b.giftQty, b.giftSubtotal, b.expectedTotal, b.verifiedAmount],
-    [2697, 199, 2, 598, 3533, '']
+    [2397, 199, 2, 598, 3233, '']
   );
 });
 
@@ -644,4 +655,15 @@ test('bookings made before the booking & support fee keep their old totals in em
   assert.match(body, /₹1,198/);
   assert.doesNotMatch(body, /support fee/);
   assert.equal(env.call({ action: 'adminVerify', passcode: env.props.ADMIN_PASSCODE, bookingId: hold.bookingId, verifiedAmount: 1198 }).ok, true);
+});
+
+test('a booking saved before the group deals keeps its full-price total', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 });
+  const sh = env.sheets.Bookings.data, H = sh[0], row = sh.find((r) => r[0] === hold.bookingId);
+  row[H.indexOf('Ticket Subtotal')] = 1798; row[H.indexOf('Expected Total')] = 1798; // saved at ₹899 each, before the fee and deals
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(2) });
+  const body = env.mails[0].htmlBody;
+  assert.match(body, /<strong>₹1,798<\/strong>/);
+  assert.doesNotMatch(body, /LILHOP|support fee/);
 });

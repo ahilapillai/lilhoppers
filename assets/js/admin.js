@@ -149,7 +149,9 @@
   }
 
   function breakdown(b) {
-    var rows = '<dt>Tickets ' + b.children + ' × ' + P.rupees(data.prices.CHILD_TICKET) + '</dt><dd>' + money(b.ticketSubtotal) + '</dd>' +
+    var each = Number(b.children) ? Number(b.ticketSubtotal) / Number(b.children) : data.prices.CHILD_TICKET;
+    var deal = (data.prices.GROUP_DEALS || []).filter(function (d) { return d.childPrice === each; })[0];
+    var rows = '<dt>Tickets ' + b.children + ' × ' + P.rupees(each) + (deal ? ' (' + esc(deal.code) + ')' : '') + '</dt><dd>' + money(b.ticketSubtotal) + '</dd>' +
       '<dt>Extra parent</dt><dd>' + (b.extraParent === 'Yes' ? money(b.extraParentCharge) : '—') + '</dd>' +
       '<dt>Santa gift × ' + (Number(b.giftQty) || 0) + '</dt><dd>' + money(b.giftSubtotal) + '</dd>';
     // The booking & support fee is whatever the saved total includes beyond the items (none on bookings made before the fee).

@@ -21,7 +21,11 @@ var CONFIG = {
   MAX_CHILDREN: 10,
   MAX_SCREENSHOT_BYTES: 5 * 1024 * 1024,
   // BOOKING_FEE: the flat 'Booking & support fee' added once per booking. Keep in step with assets/js/config.js.
-  PRICES: { CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39 },
+  // GROUP_DEALS: codes applied automatically by the number of children (the lowest price that applies wins).
+  PRICES: {
+    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
+    GROUP_DEALS: [{ code: 'LILHOP5', minChildren: 5, childPrice: 749 }, { code: 'LILHOP2', minChildren: 2, childPrice: 799 }]
+  },
   SCREENSHOT_FOLDER: 'Lil Hoppers – Payment screenshots',
   // The booking page reads each payment screenshot and only accepts it if it shows one of these names
   // (or the UPI ID), today's date and a time within this many minutes of upload. See assets/js/shotcheck.js.
@@ -58,14 +62,30 @@ var SLOT_HEADERS = ['Slot ID', 'Label', 'Time', 'Capacity'];
 /* Pure helpers (also unit-tested outside Apps Script)                 */
 /* ------------------------------------------------------------------ */
 
+/** The group deal for this many children (LILHOP2 from 2, LILHOP5 from 5), or null. */
+function groupDeal_(children) {
+  var best = null;
+  (CONFIG.PRICES.GROUP_DEALS || []).forEach(function (d) {
+    if (children >= d.minChildren && (!best || d.childPrice < best.childPrice)) best = d;
+  });
+  return best;
+}
+
 function computeAmounts(children, extraParent, giftQty) {
   var p = CONFIG.PRICES;
-  var ticketSubtotal = children * p.CHILD_TICKET;
+  var deal = groupDeal_(children);
+  var childPrice = deal ? deal.childPrice : p.CHILD_TICKET;
+  var ticketsAtFull = children * p.CHILD_TICKET;
+  var ticketSubtotal = children * childPrice; // what is charged for the tickets
   var extraParentCharge = extraParent ? p.EXTRA_PARENT : 0;
   var giftSubtotal = giftQty * p.SANTA_GIFT;
   var bookingFee = p.BOOKING_FEE || 0; // flat, once per booking
   return {
     children: children,
+    childPrice: childPrice,
+    ticketsAtFull: ticketsAtFull,
+    couponCode: deal ? deal.code : '',
+    discount: ticketsAtFull - ticketSubtotal,
     ticketSubtotal: ticketSubtotal,
     extraParent: !!extraParent,
     extraParentCharge: extraParentCharge,
@@ -76,12 +96,26 @@ function computeAmounts(children, extraParent, giftQty) {
   };
 }
 
-/** Amounts for a saved booking. The fee is whatever its saved total includes, so bookings made before the fee keep their old totals. */
+/**
+ * Amounts for a saved booking, from what was saved when it was made, so later price changes
+ * (the booking fee, group deals) never change an existing booking's total.
+ */
 function storedAmounts_(b) {
   var a = computeAmounts(Number(b.children), b.extraParent === 'Yes', Number(b.giftQty));
+  var has = function (v) { return v !== '' && v !== undefined && v !== null && isFinite(Number(v)); };
+  if (has(b.ticketSubtotal)) {
+    a.ticketSubtotal = Number(b.ticketSubtotal);
+    a.childPrice = a.children ? a.ticketSubtotal / a.children : CONFIG.PRICES.CHILD_TICKET;
+    a.ticketsAtFull = a.children * CONFIG.PRICES.CHILD_TICKET;
+    a.discount = Math.max(0, a.ticketsAtFull - a.ticketSubtotal);
+    var deal = null;
+    (CONFIG.PRICES.GROUP_DEALS || []).forEach(function (d) { if (d.childPrice === a.childPrice) deal = d; });
+    a.couponCode = a.discount && deal ? deal.code : '';
+  }
+  if (has(b.extraParentCharge)) a.extraParentCharge = Number(b.extraParentCharge);
+  if (has(b.giftSubtotal)) a.giftSubtotal = Number(b.giftSubtotal);
   var items = a.ticketSubtotal + a.extraParentCharge + a.giftSubtotal;
-  var saved = Number(b.expectedTotal);
-  if (b.expectedTotal !== '' && b.expectedTotal !== undefined && b.expectedTotal !== null && isFinite(saved)) a.bookingFee = Math.max(0, saved - items);
+  if (has(b.expectedTotal)) a.bookingFee = Math.max(0, Number(b.expectedTotal) - items);
   a.total = items + a.bookingFee;
   return a;
 }
@@ -786,11 +820,12 @@ function bookingTable_(b, verified) {
     ['Booking ID', '<strong>' + escapeHtml_(b.bookingId) + '</strong>'],
     ['Slot', escapeHtml_(CONFIG.EVENT_DATE + ', ' + b.slotTime)],
     ['Children', escapeHtml_(b.childNames)],
-    [a.children + (a.children === 1 ? ' kid' : ' kids') + ' + ' + a.children + (a.children === 1 ? ' parent' : ' parents'), rupees(a.ticketSubtotal)]
+    [a.children + (a.children === 1 ? ' kid' : ' kids') + ' + ' + a.children + (a.children === 1 ? ' parent' : ' parents'), rupees(a.discount ? a.ticketsAtFull : a.ticketSubtotal)]
   ];
   if (a.extraParent) rows.push(['Extra parent', rupees(a.extraParentCharge)]);
   if (a.giftQty) rows.push(['Personalised gift from Santa (' + a.giftQty + ' × ' + rupees(CONFIG.PRICES.SANTA_GIFT) + ')', rupees(a.giftSubtotal)]);
   if (a.bookingFee) rows.push(['Booking &amp; support fee', rupees(a.bookingFee)]);
+  if (a.discount) rows.push(['<span style="color:#1D6B3A">Code ' + escapeHtml_(a.couponCode || 'group discount') + ' applied (' + rupees(a.childPrice) + ' per child)</span>', '<span style="color:#1D6B3A">−' + rupees(a.discount) + '</span>']);
   rows.push(['<strong>Total</strong>', '<strong>' + rupees(a.total) + '</strong>']);
   if (verified) rows.push(['Amount received', rupees(b.verifiedAmount)]);
   return '<table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:15px">' + rows.map(function (r) {

@@ -51,7 +51,7 @@ Rules:
 | Child ticket | ₹899 per child | Includes entry for one parent. At least 1, at most 10 per booking. |
 | Extra Parent | ₹199 | Optional. **Unchecked** by default. Maximum one per booking. |
 | Personalised Gift from Santa | ₹299 per child | Labelled **"Optional"**. **Unchecked** by default. Parents tick it to add it. With more than one child, the parent picks the gift quantity from 1 up to the number of children (default: one per child). |
-| Booking & support fee | ₹39 per booking | **Always added**, once per booking (not per child). Shown as its own line in the order summary from the start, next to the ticket price on the homepage ("Plus a ₹39 booking & support fee per booking."), and in the emails. Bookings made before the fee keep their original totals. |
+| Booking & support fee | **None** (`BOOKING_FEE: 0`, removed 20 Nov 2026) | The ticket price is all-inclusive: the homepage says "Inclusive of all event activities." under "₹899 a ticket." If a fee is ever set again it is added once per booking, shown as its own line in the summary and emails, and must also be shown next to the price on the homepage. Bookings made while the ₹39 fee applied keep their saved totals. |
 | Group deal **LILHOP2** | ₹799 per child | **Applied automatically** when booking 2–4 children (no code to type). Child tickets only. |
 | Group deal **LILHOP5** | ₹749 per child | **Applied automatically** when booking 5 or more children. Child tickets only. |
 
@@ -65,11 +65,11 @@ Price checks (must always hold):
 
 | Booking | Total |
 |---|---|
-| 1 child, no add-ons (default) | ₹899 + ₹39 fee = ₹938 |
-| 1 child + Santa gift | ₹1,237 |
-| 1 child + Santa gift + extra parent | ₹1,436 |
-| 2 children (LILHOP2) | 2 × ₹799 + ₹39 = ₹1,637 |
-| 5 children (LILHOP5) | 5 × ₹749 + ₹39 = ₹3,784 |
+| 1 child, no add-ons (default) | ₹899 |
+| 1 child + Santa gift | ₹1,198 |
+| 1 child + Santa gift + extra parent | ₹1,397 |
+| 2 children (LILHOP2) | 2 × ₹799 = ₹1,598 |
+| 5 children (LILHOP5) | 5 × ₹749 = ₹3,745 |
 
 ## 5. Customer journey
 

@@ -4,10 +4,10 @@ window.LH_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbxpT8i_y2TjPHl-6cMQ4o7_Le266Rb6W945TDDivvx3KYQw7uHRS7YPDTIHNLcNycSs/exec',
   UPI_ID: 'ahilapil.26-1@okicici',
   UPI_PAYEE: 'Lil Hoppers',
-  // BOOKING_FEE: the flat 'Booking & support fee' added once per booking.
+  // BOOKING_FEE: a flat 'Booking & support fee' added once per booking (0 = none: the ticket price is all-inclusive).
   // GROUP_DEALS: codes applied automatically by the number of children (the lowest price that applies wins).
   PRICES: {
-    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
+    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 0,
     GROUP_DEALS: [{ code: 'LILHOP5', minChildren: 5, childPrice: 749 }, { code: 'LILHOP2', minChildren: 2, childPrice: 799 }]
   },
   MAX_CHILDREN: 10,

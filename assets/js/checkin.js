@@ -4,6 +4,8 @@
 (function () {
   var cfg = window.LH_CONFIG;
   var API = window.LH_API;
+  // Staff browsers aren't counted in analytics or recorded (see assets/js/analytics.js).
+  try { localStorage.setItem('lh_notrack', '1'); } catch (e) { /* private mode */ }
   var $ = function (id) { return document.getElementById(id); };
   var KEY = 'lh_staff_passcode';
 

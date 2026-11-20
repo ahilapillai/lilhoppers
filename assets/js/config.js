@@ -16,6 +16,12 @@ window.LH_CONFIG = {
   VENUE: 'Vata Vriksha, Indiranagar',
   MAPS_URL: 'https://share.google/GE3sdUk4LarPOcGPW',
   CONTACT_EMAIL: 'hello.lilhoppers@gmail.com',
+  // Analytics (homepage and booking page only). Leave an ID empty to switch that tool off.
+  //   GA4_ID: Google Analytics 4 measurement ID, e.g. 'G-AB12CD34EF' (Admin → Data streams → your web stream).
+  //   CLARITY_ID: Microsoft Clarity project ID, e.g. 'abcd1234ef' (Settings → Overview). Free; records every visit.
+  //   HOTJAR_ID: Hotjar site ID (numbers only), for an existing Hotjar account.
+  //   CONTENTSQUARE_ID: Contentsquare tag ID (what new Hotjar sign-ups get), from the tag 't.contentsquare.net/uxa/<ID>.js'.
+  ANALYTICS: { GA4_ID: '', CLARITY_ID: '', HOTJAR_ID: '', CONTENTSQUARE_ID: '' },
   // Payment screenshots must show one of these names (or the UPI ID), today's date, and a time within this many minutes of upload.
   PAYEE_NAMES: ['AHILA PICHAIPILLAI'],
   SCREENSHOT_TOLERANCE_MINUTES: 15

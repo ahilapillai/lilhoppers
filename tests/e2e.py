@@ -1,6 +1,6 @@
 """Browser tests for the site in demo mode (no backend). Run: python3 tests/e2e.py
 Needs: pip install playwright opencv-python-headless && a Chrome/Chromium."""
-import http.server, socketserver, threading, os, sys, re, functools
+import http.server, socketserver, threading, os, sys, re, functools, json
 import cv2, numpy as np
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -17,6 +17,9 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
         # Always test in demo mode: serve config.js with API_URL emptied, so tests never touch the real bookings.
         if self.path.split('?')[0] == '/assets/js/config.js':
             src = open(os.path.join(ROOT, 'assets', 'js', 'config.js'), encoding='utf-8').read()
+            # The analytics tests switch on test IDs with a cookie (the scripts themselves can't load offline).
+            if 'lh_analytics_test=1' in (self.headers.get('Cookie') or ''):
+                src = re.sub(r"ANALYTICS:\s*\{[^}]*\}", "ANALYTICS: { GA4_ID: 'G-TEST123', CLARITY_ID: 'clartest1', HOTJAR_ID: '', CONTENTSQUARE_ID: '' }", src)
             body = re.sub(r"API_URL:\s*'[^']*'", "API_URL: ''", src).encode('utf-8')
             self.send_response(200); self.send_header('Content-Type', 'application/javascript'); self.send_header('Content-Length', str(len(body))); self.end_headers()
             self.wfile.write(body); return
@@ -60,6 +63,18 @@ with sync_playwright() as p:
     check('₹899' in body and '₹799' not in body, 'landing: shows ₹899, no old ₹799')
     check('Plus a ₹39 booking & support fee per booking.' in body, 'landing: the booking & support fee is shown next to the ticket price')
     check('Christmas Carnival' in body, 'landing: says Christmas Carnival')
+    # ---------- SEO ----------
+    check(page.title() == "Christmas Carnival for Kids in Bengaluru · 12 Dec 2026 | Lil' Hoppers", 'seo: title "Christmas Carnival for Kids in Bengaluru · 12 Dec 2026" (%s)' % page.title())
+    desc = page.get_attribute('meta[name=description]', 'content')
+    check('Christmas events for kids in Bengaluru (Bangalore)' in desc and '₹39' in desc, 'seo: description says "Christmas events for kids in Bengaluru (Bangalore)"')
+    check(page.get_attribute('link[rel=canonical]', 'href') == 'https://lilhoppers.co/' and page.get_attribute('meta[property="og:image"]', 'content') == 'https://lilhoppers.co/assets/img/og-card.jpg', 'seo: canonical URL and a full-URL share image')
+    check(page.evaluate('document.documentElement.lang') == 'en-IN', 'seo: page language en-IN')
+    ld = json.loads(page.evaluate("document.querySelector('script[type=\"application/ld+json\"]').textContent"))
+    ev = [g for g in ld['@graph'] if g['@type'] == 'Event'][0]
+    check(ev['startDate'] == '2026-12-12T14:00:00+05:30' and ev['location']['name'] == 'Vata Vriksha' and ev['offers']['price'] == '899' and ev['offers']['priceCurrency'] == 'INR', 'seo: Event structured data (date, venue, ₹899 ticket)')
+    low = body.lower()
+    check('vata vriksha, indiranagar, bengaluru' in low and 'christmas activities for kids' in low and 'christmas carnival for kids in bengaluru' in low and '12 december 2026' in low, 'seo: page copy mentions Bengaluru, "Christmas activities for kids" and the year')
+    check('transaction ID' not in body and 'Upload your payment screenshot.' in body, 'landing: "How booking works" asks for the screenshot only')
     check('From 2:00 PM onwards, 3 slots' in body and 'Slot 1' not in body, 'landing: When box says "From 2:00 PM onwards, 3 slots"')
     check('An afternoon of art' not in body and 'Paint and glitter fun' not in body and 'Each ticket lets in' not in body, 'landing: removed copy is gone')
     check('+91 96864 53295' in body and page.locator('footer a[href="https://instagram.com/lil.hoppers"]').count() == 1 and page.locator('footer a[href="book.html"]').count() == 0, 'landing: footer has the phone number and Instagram, no Book tickets')
@@ -396,6 +411,67 @@ with sync_playwright() as p:
     check('Checked in' in ad.inner_text('#rows'), 'admin: booking shows "Checked in"')
     check(not verrors, 'checkin: no script errors ' + str(verrors[:2]))
     cam.close()
+
+    # ---------- analytics: GA4 funnel events + session recordings ----------
+    ab = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader',
+        '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'])
+    an = ab.new_context(viewport={'width': 1280, 'height': 900})
+    an.add_cookies([{'name': 'lh_analytics_test', 'value': '1', 'url': BASE}])
+    a = an.new_page(); aerrors = []
+    a.on('pageerror', lambda e: aerrors.append(str(e)))
+    events = lambda: a.evaluate("() => (window.dataLayer || []).map(x => Array.from(x)).filter(x => x[0] === 'event')")
+    a.goto(BASE + '/index.html', wait_until='domcontentloaded'); a.wait_for_timeout(1500)
+    cfgd = a.evaluate("() => (window.dataLayer || []).map(x => Array.from(x)).filter(x => x[0] === 'config').map(x => x[1])")
+    check(cfgd == ['G-TEST123'], 'analytics: GA4 starts with the measurement ID from config.js (%s)' % cfgd)
+    check(a.locator('script[src*="googletagmanager.com/gtag/js?id=G-TEST123"]').count() == 1 and a.locator('script[src*="clarity.ms/tag/clartest1"]').count() == 1, 'analytics: GA4 and Clarity scripts are added')
+    a.evaluate("document.getElementById('tickets').scrollIntoView()")  # smooth scrolling: wait until it gets there
+    try: a.wait_for_function("() => dataLayer.some(x => x[1] === 'section_view')", timeout=8000)
+    except Exception: pass
+    secs = [e[2]['section'] for e in events() if e[1] == 'section_view']
+    check('tickets' in secs, 'analytics: the homepage records how far down visitors get (%s)' % secs)
+    a.evaluate("window.addEventListener('click', e => e.preventDefault(), true)")  # stay on the page to read the click event
+    a.click('a[data-cta="tickets"]')
+    check([e[2]['cta_location'] for e in events() if e[1] == 'book_click'] == ['tickets'], 'analytics: "Book tickets" clicks say which button was used')
+    a.close()
+
+    a = an.new_page(); a.on('pageerror', lambda e: aerrors.append(str(e)))
+    a.goto(BASE + '/book.html'); a.wait_for_selector('.bk-slot')
+    a.click('#kidsPlus')  # 2 kids: LILHOP2
+    a.click('.bk-slot >> nth=0'); a.click('#toPay'); a.wait_for_selector('#payPanel:not([hidden])')
+    a.click('#copyUpi'); a.click('#paid'); a.wait_for_selector('#step-details:not([hidden])')
+    a.click('#submitDetails')
+    a.fill('#parentName', 'Meera Iyer'); a.fill('#email', 'meera@example.com'); a.fill('#phone', '98450 12345'); a.fill('#child0', 'Aarav'); a.fill('#child1', 'Diya')
+    a.set_input_files('#shot', files=[{'name': 'pay.png', 'mimeType': 'image/png', 'buffer': cv2.imencode('.png', np.full((40, 40, 3), 200, np.uint8))[1].tobytes()}])
+    a.wait_for_selector('#shotCheck[data-state=unreadable]', timeout=90000)
+    a.click('#submitDetails'); a.wait_for_selector('#step-done:not([hidden])')
+    ev = events(); names = [e[1] for e in ev]
+    funnel = ['view_item', 'kids_change', 'slot_select', 'add_to_cart', 'begin_checkout', 'copy_upi_id', 'add_payment_info', 'booking_error', 'screenshot_upload', 'screenshot_check', 'purchase']
+    it = iter(names)
+    check(all(n in it for n in funnel), 'analytics: booking steps are sent in order (%s)' % names)
+    buy = [e[2] for e in ev if e[1] == 'purchase']
+    buy = buy[0] if buy else {}
+    check(buy.get('value') == 1637 and buy.get('currency') == 'INR' and buy.get('coupon') == 'LILHOP2' and str(buy.get('transaction_id', '')).startswith('LH-'), 'analytics: purchase carries the booking ID, ₹1,637 and the LILHOP2 code (%s)' % {k: buy.get(k) for k in ('value', 'coupon', 'transaction_id')})
+    check(sum(i['price'] * i['quantity'] for i in buy.get('items', [])) == 1637, 'analytics: purchase items add up to the total')
+    check([e[2] for e in ev if e[1] == 'booking_error'][:1] == [{'step': 'details', 'reason': 'parentName'}], 'analytics: a form problem is recorded with the field that stopped them')
+    dump = json.dumps(a.evaluate("() => (window.dataLayer || []).map(x => Array.from(x))"), ensure_ascii=False, default=str) + json.dumps(a.evaluate('() => window.clarity.q.map(x => Array.from(x))'), default=str)
+    check(not any(x in dump for x in ['Meera', 'meera@', '98450', 'Aarav', 'Diya']), 'analytics: no names, email or phone are sent')
+    cq = a.evaluate('() => window.clarity.q.map(x => Array.from(x))')
+    check(['event', 'purchase'] in cq and ['set', 'booking_step', 'done'] in cq, 'analytics: recordings are marked with the same events and the step reached')
+    masked = a.evaluate('''() => ['#detailsForm .bk-fields', '#shotPreview', '.bk-done-grid'].map(s => [...document.querySelectorAll(s)].every(el =>
+        el.getAttribute('data-clarity-mask') === 'true' && el.hasAttribute('data-hj-suppress') && el.hasAttribute('data-cs-mask')) && document.querySelectorAll(s).length > 0)''')
+    check(all(masked), 'analytics: details, screenshot and ticket details are masked in recordings %s' % masked)
+
+    a.goto(BASE + '/admin.html'); a.goto(BASE + '/book.html'); a.wait_for_timeout(800)
+    check(a.evaluate('typeof window.gtag') == 'undefined' and a.locator('script[src*="clarity.ms"]').count() == 0, 'analytics: once the admin page is opened, that browser is left out')
+    a.goto(BASE + '/book.html?notrack=0'); a.wait_for_timeout(800)
+    check(a.evaluate('typeof window.gtag') == 'function', 'analytics: ?notrack=0 counts that browser again')
+    check(not aerrors, 'analytics: no script errors ' + str(aerrors[:2]))
+    an.close()
+
+    # with no IDs in config.js nothing loads
+    q = ab.new_page(); q.goto(BASE + '/book.html'); q.wait_for_selector('.bk-slot')
+    check(q.evaluate('typeof window.gtag') == 'undefined' and q.locator('script[src*="clarity.ms"], script[src*="hotjar"], script[src*="contentsquare"]').count() == 0, 'analytics: nothing loads while the IDs are empty')
+    q.close(); ab.close()
 
 httpd.shutdown()
 print('\n%d failure(s)' % len(failures))

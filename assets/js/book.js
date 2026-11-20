@@ -6,6 +6,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var KEY = 'lh_booking_v1';
   var STEPS = ['choose', 'details', 'done'];
+  // Analytics (assets/js/analytics.js): booking steps as GA4 events, and markers in session recordings.
+  var T = window.LH_TRACK || { track: function () {}, once: function () {}, tag: function () {}, order: function () { return {}; } };
 
   LH_FESTIVE.fillTemplates(document, LH_FESTIVE.generate());
   if (API.demo) $('demoBanner').hidden = false;
@@ -64,6 +66,7 @@
   function go(step, opts) {
     state.step = step;
     persist();
+    T.tag('booking_step', step);
     STEPS.forEach(function (s) { $('step-' + s).hidden = s !== step; });
     var idx = STEPS.indexOf(step);
     document.querySelectorAll('.bk-steps li').forEach(function (li, i) {
@@ -102,6 +105,7 @@
       var sel = slotById(state.slotId);
       if (sel && sel.soldOut && !mySlot(sel.id)) state.slotId = null;
       renderChoose();
+      if (state.step === 'choose') T.once('view_item', T.order(localAmounts(), {}));
     });
   }
 
@@ -119,7 +123,11 @@
       input.type = 'radio'; input.name = 'slot'; input.value = s.id;
       input.disabled = !!sold;
       input.checked = state.slotId === s.id;
-      input.addEventListener('change', function () { state.slotId = s.id; showError($('chooseError'), ''); changed(true); });
+      input.addEventListener('change', function () {
+        state.slotId = s.id; showError($('chooseError'), ''); changed(true);
+        T.track('slot_select', { slot: s.label });
+        T.once('add_to_cart', T.order(localAmounts(), { slot: s.label }));
+      });
       var name = document.createElement('span'); name.className = 'bk-slot-name'; name.textContent = s.label;
       var time = document.createElement('span'); time.className = 'bk-slot-time'; time.textContent = String(s.time).replace(/^(\d{1,2}:\d{2}) (AM|PM) – (.+ \2)$/, '$1 – $3');
       label.appendChild(input); label.appendChild(name); label.appendChild(time);
@@ -195,20 +203,22 @@
     changed();
   }
 
-  $('kidsMinus').addEventListener('click', function () { setChildren(state.children - 1); });
-  $('kidsPlus').addEventListener('click', function () { setChildren(state.children + 1); });
-  $('extraParent').addEventListener('change', function (e) { state.extraParent = e.target.checked; changed(); });
-  $('giftOn').addEventListener('change', function (e) { state.giftOn = e.target.checked; changed(); });
+  $('kidsMinus').addEventListener('click', function () { setChildren(state.children - 1); T.track('kids_change', { children: state.children }); });
+  $('kidsPlus').addEventListener('click', function () { setChildren(state.children + 1); T.track('kids_change', { children: state.children }); });
+  $('extraParent').addEventListener('change', function (e) { state.extraParent = e.target.checked; changed(); if (e.target.checked) T.track('add_extra_parent'); });
+  $('giftOn').addEventListener('change', function (e) { state.giftOn = e.target.checked; changed(); if (e.target.checked) T.track('add_santa_gift'); });
   $('giftQty').addEventListener('change', function (e) { state.giftQty = Number(e.target.value); state.giftTouched = true; changed(); });
 
   $('photoOk').addEventListener('change', function (e) {
     state.photoOk = e.target.checked;
+    if (!state.photoOk) T.track('consent_unticked');
     $('consentRow').classList.remove('bk-nudge');
     if (state.photoOk && $('chooseError').textContent === CONSENT_MSG) showError($('chooseError'), '');
   });
   var CONSENT_MSG = 'Tick the box above to continue.';
   function needConsent() {
     if (state.photoOk) return false;
+    T.track('booking_error', { step: state.step, reason: 'no_consent' });
     $('consentRow').classList.add('bk-nudge'); $('photoOk').focus(); showError($('chooseError'), CONSENT_MSG);
     return true;
   }
@@ -217,6 +227,7 @@
   var consentDlg = $('consentDlg');
   $('consentInfo').addEventListener('click', function (e) {
     e.preventDefault(); // don't tick the box just by opening the details
+    T.track('consent_info_open');
     if (consentDlg.showModal) consentDlg.showModal(); else consentDlg.setAttribute('open', '');
   });
   function closeConsent() { if (consentDlg.close) consentDlg.close(); else consentDlg.removeAttribute('open'); }
@@ -253,6 +264,7 @@
       $('toPay').disabled = false;
       setUpdating(false);
       if (!res.ok) {
+        T.track('booking_error', { step: first ? 'hold' : 'update', reason: res.code || 'error' });
         if (res.code === 'SOLD_OUT') { var s = slotById(state.slotId); if (s) s.soldOut = true; state.slotId = null; }
         if (state.hold) state.holdStale = true;
         persist();
@@ -263,6 +275,9 @@
       state.hold = res;
       state.holdStale = false;
       state.result = null;
+      // First hold = the QR is on screen: 'begin_checkout'. Later changes while paying: 'update_order'.
+      if (first) T.track('begin_checkout', T.order(res.amounts, { slot: res.slot.label }));
+      else T.track('update_order', { currency: 'INR', value: res.amounts.total });
       showError(err, '');
       persist();
       renderSummary();
@@ -271,7 +286,7 @@
   }
 
   $('toPay').addEventListener('click', function () {
-    if (!state.slotId) { showError($('chooseError'), 'Pick a time first.'); return; }
+    if (!state.slotId) { showError($('chooseError'), 'Pick a time first.'); T.track('booking_error', { step: 'choose', reason: 'no_slot' }); return; }
     if (needConsent()) return;
     showError($('chooseError'), '');
     requestHold();
@@ -312,7 +327,7 @@
       var m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
       $('countdown').textContent = m + ':' + (s < 10 ? '0' : '') + s;
       $('holdExpired').hidden = left > 0;
-      if (left <= 0) clearInterval(timer);
+      if (left <= 0) { clearInterval(timer); T.once('hold_expired'); }
     }
     tick();
     timer = setInterval(tick, 1000);
@@ -339,6 +354,7 @@
   }
   $('saveQr').addEventListener('click', function () {
     var btn = this, name = state.hold.bookingId + '-pay.png';
+    T.track('save_qr');
     qrPng().then(function (blob) {
       var file = window.File ? new File([blob], name, { type: 'image/png' }) : null;
       if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -354,14 +370,17 @@
 
   $('copyUpi').addEventListener('click', function () {
     var btn = this;
+    T.track('copy_upi_id');
     var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1800); };
     if (navigator.clipboard) navigator.clipboard.writeText(state.hold.upi.id).then(done, done); else done();
   });
   $('paid').addEventListener('click', function () {
     if (needConsent()) return;
+    T.track('add_payment_info', T.order(state.hold.amounts, { payment_type: 'UPI' }));
     go('details');
   });
   $('changeBooking').addEventListener('click', function () {
+    T.track('start_again');
     if (state.hold) API.call('cancelHold', { bookingId: state.hold.bookingId });
     state.hold = null;
     state.holdStale = false;
@@ -438,6 +457,7 @@
     });
     job.then(function (res) {
       if (seq !== checkSeq || state.shot !== shot) return;
+      T.track('screenshot_check', { result: res.status });
       shot.check = res;
       showCheck(res);
     });
@@ -455,8 +475,9 @@
       $('uploadBox').hidden = true;
       $('uploadBox').classList.remove('is-missing');
       showError($('detailsError'), '');
+      T.track('screenshot_upload');
       checkShot(shot);
-    }, function (msg) { showError($('detailsError'), msg); });
+    }, function (msg) { showError($('detailsError'), msg); T.track('booking_error', { step: 'details', reason: 'unreadable_file' }); });
     e.target.value = '';
   });
   function clearShot() {
@@ -466,23 +487,26 @@
     $('shotPreview').classList.remove('is-fail');
     $('uploadBox').hidden = false;
   }
-  $('shotRemove').addEventListener('click', clearShot);
+  $('shotRemove').addEventListener('click', function () { T.track('screenshot_remove'); clearShot(); });
 
+  var invalid = ''; // why the last validate() failed, for analytics: the field id or the screenshot problem
   function validate() {
+    invalid = '';
     var name = $('parentName').value.trim();
     var email = $('email').value.trim();
     var phone = $('phone').value.replace(/\D/g, '');
     var kids = Array.prototype.map.call($('childFields').querySelectorAll('input'), function (i) { return i.value.trim(); });
-    var bad = function (id, msg) { var el = $(id); if (el) { el.setAttribute('aria-invalid', 'true'); el.focus(); } return msg; };
+    var bad = function (id, msg) { invalid = id; var el = $(id); if (el) { el.setAttribute('aria-invalid', 'true'); el.focus(); } return msg; };
     document.querySelectorAll('#detailsForm [aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
     if (name.length < 2) return bad('parentName', "Add the parent's name.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return bad('email', 'Add a valid email address.');
     if (!/^[6-9]\d{9}$/.test(phone)) return bad('phone', 'Add a 10-digit mobile number.');
     for (var i = 0; i < kids.length; i++) if (!kids[i]) return bad('child' + i, kids.length === 1 ? "Add your child's name." : "Add each child's name.");
     if (!state.shot) { $('uploadBox').classList.add('is-missing'); return bad('shot', 'Upload the screenshot of your payment.'); }
-    if (state.shot && state.shot.check && state.shot.check.status === 'checking') return "Hold on, we're still checking your screenshot.";
+    if (state.shot && state.shot.check && state.shot.check.status === 'checking') { invalid = 'screenshot_checking'; return "Hold on, we're still checking your screenshot."; }
     if (state.shot && state.shot.check && state.shot.check.status === 'fail') {
       $('shotRemove').focus();
+      invalid = 'screenshot_not_payment';
       return "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made.";
     }
     return { parentName: name, email: email, phone: phone, childNames: kids };
@@ -492,7 +516,7 @@
     e.preventDefault();
     var err = $('detailsError');
     var v = validate();
-    if (typeof v === 'string') { showError(err, v); return; }
+    if (typeof v === 'string') { showError(err, v); T.track('booking_error', { step: 'details', reason: invalid.replace(/^child\d+$/, 'child_name') }); return; }
     var btn = $('submitDetails');
     btn.disabled = true;
     btn.firstChild.textContent = 'Sending… ';
@@ -506,7 +530,9 @@
     API.call('submitBooking', payload).then(function (res) {
       btn.disabled = false;
       btn.firstChild.textContent = 'Get my ticket';
-      if (!res.ok) { showError(err, res.error); return; }
+      if (!res.ok) { showError(err, res.error); T.track('booking_error', { step: 'submit', reason: res.code || 'error' }); return; }
+      // Booking received (payment still to be verified by an admin).
+      T.track('purchase', T.order(res.amounts, { transaction_id: res.bookingId }));
       state.result = {
         bookingId: res.bookingId, amounts: res.amounts, slotTime: state.hold.slot.time,
         parentName: v.parentName, childNames: v.childNames.join(', '),
@@ -517,7 +543,7 @@
       go('done');
     });
   });
-  $('backToPay').addEventListener('click', function () { go('choose'); });
+  $('backToPay').addEventListener('click', function () { T.track('back_to_payment'); go('choose'); });
 
   /* ---------------- step 3: done ---------------- */
   function renderDone() {
@@ -534,6 +560,7 @@
     document.querySelectorAll('#step-done [data-lines="server"]').forEach(function (dl) { renderLines(dl, r.amounts); });
   }
   $('bookAnother').addEventListener('click', function () {
+    T.track('book_another');
     state.hold = null; state.holdStale = false; state.result = null; state.shot = null; state.slotId = null;
     state.children = 1; state.extraParent = false; state.giftOn = false; state.giftQty = 1; state.giftTouched = false;
     $('detailsForm').reset();

@@ -1,13 +1,64 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lil' Hoppers Christmas Carnival · Sat 12 Dec · Indiranagar</title>
-<meta name="description" content="A Christmas Carnival for kids in Indiranagar, Bengaluru: face painting, cookie decorating, magnet painting, tote bag printing, DIY crafts, Santa and a photobooth, and freeze dance. Sat 12 Dec, three slots from 2 PM. ₹899 per child, one parent included, plus a ₹39 booking &amp; support fee per booking.">
-<meta property="og:title" content="Lil' Hoppers Christmas Carnival">
-<meta property="og:description" content="Sat 12 Dec · Vata Vriksha, Indiranagar · ₹899 per child, one parent included, plus a ₹39 booking &amp; support fee per booking.">
-<meta property="og:image" content="assets/img/tree.webp">
+<title>Christmas Carnival for Kids in Bengaluru · 12 Dec 2026 | Lil' Hoppers</title>
+<meta name="description" content="Looking for Christmas events for kids in Bengaluru (Bangalore)? Lil' Hoppers' Christmas Carnival at Vata Vriksha, Indiranagar, on Sat 12 Dec 2026: meet Santa, face painting, cookie decorating, crafts and freeze dance. ₹899 per child with one parent included, plus a ₹39 booking &amp; support fee per booking.">
+<link rel="canonical" href="https://lilhoppers.co/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lil' Hoppers">
+<meta property="og:locale" content="en_IN">
+<meta property="og:url" content="https://lilhoppers.co/">
+<meta property="og:title" content="Lil' Hoppers Christmas Carnival for Kids · Bengaluru">
+<meta property="og:description" content="Sat 12 Dec 2026 · Vata Vriksha, Indiranagar · Santa, face painting, cookie decorating, crafts and more. ₹899 per child, one parent included, plus a ₹39 booking &amp; support fee per booking.">
+<meta property="og:image" content="https://lilhoppers.co/assets/img/og-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Lil' Hoppers Christmas Carnival for kids: a Christmas tree with presents">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Event",
+      "name": "Lil' Hoppers Christmas Carnival for Kids",
+      "description": "A Christmas carnival for kids in Indiranagar, Bengaluru: meet Santa and the photobooth, face painting, cookie decorating, magnet painting, tote bag printing, a DIY craft, freeze dance and festive stalls. Three slots from 2 PM. Every ticket lets in one child and one parent.",
+      "startDate": "2026-12-12T14:00:00+05:30",
+      "endDate": "2026-12-12T19:30:00+05:30",
+      "eventStatus": "https://schema.org/EventScheduled",
+      "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+      "location": {
+        "@type": "Place",
+        "name": "Vata Vriksha",
+        "address": { "@type": "PostalAddress", "addressLocality": "Indiranagar, Bengaluru", "addressRegion": "Karnataka", "postalCode": "560038", "addressCountry": "IN" }
+      },
+      "image": ["https://lilhoppers.co/assets/img/og-card.jpg"],
+      "offers": {
+        "@type": "Offer",
+        "name": "Child ticket (one parent included)",
+        "price": "899",
+        "priceCurrency": "INR",
+        "availability": "https://schema.org/InStock",
+        "url": "https://lilhoppers.co/book.html"
+      },
+      "organizer": { "@id": "https://lilhoppers.co/#org" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://lilhoppers.co/#org",
+      "name": "Lil' Hoppers",
+      "url": "https://lilhoppers.co/",
+      "logo": "https://lilhoppers.co/assets/img/logo.png",
+      "email": "hello.lilhoppers@gmail.com",
+      "telephone": "+91-96864-53295",
+      "sameAs": ["https://instagram.com/lil.hoppers"]
+    },
+    { "@type": "WebSite", "name": "Lil' Hoppers", "url": "https://lilhoppers.co/" }
+  ]
+}
+</script>
 <meta name="theme-color" content="#4E2F92">
 <link rel="icon" id="favicon" type="image/png" href="assets/img/favicon-64.png">
 <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
@@ -15,6 +66,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/config.js" defer></script>
+<script src="assets/js/analytics.js" defer></script>
 </head>
 <body>
 <div id="top" style="background: radial-gradient(ellipse 60% 700px at 50% 460px, rgba(190, 150, 255, 0.28), transparent 70%), linear-gradient(180deg, #6A45B3 0%, #4E2F92 16%, #331D66 36%, #1A0F38 58%, #08050F 82%, #000000 100%); color: #FFF8EC; font-family: 'Nunito', ui-rounded, system-ui, sans-serif; overflow-x: hidden">
@@ -37,7 +90,7 @@
 <img src="assets/img/logo.png" alt="Lil' Hoppers" style="display: block; height: 58px; width: auto">
 </a>
 <div style="grid-column: 3; justify-self: end">
-<a href="book.html" class="lh-nav-cta" style="display: inline-flex; align-items: center; white-space: nowrap; min-height: 44px; padding: 0 20px; box-sizing: border-box; border-radius: 999px; border: 1.5px solid #FFF8EC; color: #FFF8EC; font-weight: 800; font-size: 15px; text-decoration: none">Book tickets</a>
+<a href="book.html" data-cta="nav" class="lh-nav-cta" style="display: inline-flex; align-items: center; white-space: nowrap; min-height: 44px; padding: 0 20px; box-sizing: border-box; border-radius: 999px; border: 1.5px solid #FFF8EC; color: #FFF8EC; font-weight: 800; font-size: 15px; text-decoration: none">Book tickets</a>
 </div>
 </header>
 
@@ -47,10 +100,10 @@
 <h1 style="margin: 0; display: flex; flex-direction: column; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 700; font-size: clamp(44px, 4.6vw, 66px); line-height: 1.02; letter-spacing: -0.015em; text-wrap: balance"><span>Christmas Carnival</span><span style="color: #FCD419">for kids</span></h1>
 <div class="lh-row" style="display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 15px; font-weight: 700; color: #FFF8EC">
 <span style="display: inline-flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCD419" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Sat 12 Dec · 3 slots from 2 PM</span>
-<span style="display: inline-flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCD419" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle></svg>Vata Vriksha, Indiranagar</span>
+<span style="display: inline-flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FCD419" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle></svg>Vata Vriksha, Indiranagar, Bengaluru</span>
 </div>
 <div class="lh-row" style="margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px">
-<a href="book.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 14px; min-height: 80px; padding: 0 40px; box-sizing: border-box; max-width: 100%; border-radius: 999px; background: #FCD419; color: #1A1408; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: clamp(22px, 2vw, 28px); text-decoration: none; box-shadow: 0 6px 0 #B89400, 0 0 60px rgba(252, 212, 25, 0.35)"><span>Book tickets</span><span>₹899</span><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+<a href="book.html" data-cta="hero" style="display: inline-flex; align-items: center; justify-content: center; gap: 14px; min-height: 80px; padding: 0 40px; box-sizing: border-box; max-width: 100%; border-radius: 999px; background: #FCD419; color: #1A1408; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: clamp(22px, 2vw, 28px); text-decoration: none; box-shadow: 0 6px 0 #B89400, 0 0 60px rgba(252, 212, 25, 0.35)"><span>Book tickets</span><span>₹899</span><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
 <a href="#activities" style="display: inline-flex; align-items: center; gap: 12px; min-height: 48px; color: #FFF8EC; font-weight: 800; font-size: 15px; text-decoration: none"><span aria-hidden="true" style="flex: 0 0 48px; width: 48px; height: 48px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.5); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"></path></svg></span>What's inside</a>
 </div>
 </div>
@@ -114,18 +167,18 @@
 </div>
 </section>
 
-<section id="party" style="position: relative; max-width: 880px; margin: 0 auto; padding: 110px 24px 120px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center">
+<section id="party" data-track-section style="position: relative; max-width: 880px; margin: 0 auto; padding: 110px 24px 120px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center">
 <p style="margin: 0 0 8px; font-size: 13px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #FCD419">The party</p>
-<p style="margin: 0; font-size: 26px; line-height: 1.45; text-wrap: pretty">Lil' Hoppers is throwing a Christmas Carnival for kids, and it's packed: face painting, cookie decorating, magnet painting, tote bag printing, a DIY activity, Santa and the photobooth, freeze dance and much more.</p>
+<p style="margin: 0; font-size: 26px; line-height: 1.45; text-wrap: pretty">Lil' Hoppers is throwing a Christmas Carnival for kids in Bengaluru, and it's packed: face painting, cookie decorating, magnet painting, tote bag printing, a DIY activity, Santa and the photobooth, freeze dance and much more.</p>
 <p style="margin: 0; font-size: 26px; line-height: 1.45; text-wrap: pretty">Every ticket lets in one kid and one grown-up, so you're right there for every cookie, every wish and every dance move.</p>
 </section>
 </div>
 
-<section id="activities" style="position: relative; overflow: hidden; padding: 120px 24px 110px">
+<section id="activities" data-track-section style="position: relative; overflow: hidden; padding: 120px 24px 110px">
 <div class="lh-snow" aria-hidden="true"><template data-list="snowA" data-as="f"><i class="{{f.cls}}" style="left: {{f.left}}; width: {{f.size}}; height: {{f.size}}; opacity: {{f.op}}; animation-duration: {{f.dur}}; animation-delay: {{f.delay}}"></i></template></div>
 <div style="position: relative; max-width: 1200px; margin: 0 auto">
 <div style="max-width: 680px">
-<p style="margin: 0 0 20px; font-size: 13px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #FCD419">What's inside</p>
+<p style="margin: 0 0 20px; font-size: 13px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #FCD419">Christmas activities for kids</p>
 <h2 style="margin: 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: clamp(34px, 4.2vw, 56px); line-height: 1.1; letter-spacing: -0.01em">Seven stations to hop through.</h2>
 <p style="margin: 24px 0 0; font-size: 17px; line-height: 1.6; color: #D2C8E6">Every stop is something new to make, eat or try.<br>Here's what's waiting.</p>
 </div>
@@ -186,7 +239,7 @@
 <div style="position: relative; overflow: hidden">
 <div class="lh-snow" aria-hidden="true"><template data-list="snowB" data-as="f"><i class="{{f.cls}}" style="left: {{f.left}}; width: {{f.size}}; height: {{f.size}}; opacity: {{f.op}}; animation-duration: {{f.dur}}; animation-delay: {{f.delay}}"></i></template></div>
 
-<section id="tickets" style="position: relative; padding: 120px 24px 96px">
+<section id="tickets" data-track-section style="position: relative; padding: 120px 24px 96px">
 <div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 56px; align-items: stretch">
 <div style="flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column">
 <p style="margin: 0 0 20px; font-size: 13px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #FCD419">Tickets</p>
@@ -195,12 +248,12 @@
 <dl style="margin: 0; margin-top: auto; padding-top: 52px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 16px">
 <div style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 18px; padding: 22px 24px">
 <dt style="font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #BFB3D9">When</dt>
-<dd style="margin: 8px 0 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: 21px; line-height: 1.3">Sat, 12 December</dd>
+<dd style="margin: 8px 0 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: 21px; line-height: 1.3">Sat, 12 December 2026</dd>
 <dd style="margin: 10px 0 0; display: flex; flex-direction: column; gap: 4px; font-size: 15px; font-weight: 700; color: #E6DDF7"><span>From 2:00 PM onwards, 3 slots</span></dd>
 </div>
 <div style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 18px; padding: 22px 24px">
 <dt style="font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #BFB3D9">Venue</dt>
-<dd style="margin: 8px 0 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: 21px; line-height: 1.3">Vata Vriksha, Indiranagar</dd>
+<dd style="margin: 8px 0 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: 21px; line-height: 1.3">Vata Vriksha, Indiranagar, Bengaluru</dd>
 <dd style="margin: 10px 0 0"><a href="https://share.google/GE3sdUk4LarPOcGPW" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; color: #FCD419">Open in Google Maps<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path></svg></a></dd>
 </div>
 </dl>
@@ -227,14 +280,14 @@
 <span aria-hidden="true" style="flex: 0 0 40px; height: 40px; border-radius: 50%; background: #FE8278; color: #1A1408; display: flex; align-items: center; justify-content: center; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: 18px">3</span>
 <div style="display: flex; flex-direction: column; gap: 4px">
 <p style="margin: 0; font-weight: 800; font-size: 17px">Share your payment proof</p>
-<p style="margin: 0; font-size: 17px; line-height: 1.55; color: #D2C8E6">Add your UPI transaction ID or a screenshot. We check it and email your confirmation.</p>
+<p style="margin: 0; font-size: 17px; line-height: 1.55; color: #D2C8E6">Upload your payment screenshot. We check it and email your confirmation.</p>
 </div>
 </li>
 </ol>
 </div>
 </div>
 <div style="max-width: 1200px; margin: 64px auto 0; display: flex; justify-content: center">
-<a href="book.html" style="display: inline-flex; align-items: center; gap: 14px; min-height: 76px; padding: 0 46px; border-radius: 999px; background: #FCD419; color: #1A1408; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: clamp(22px, 2vw, 28px); text-decoration: none; box-shadow: 0 5px 0 #B89400, 0 0 50px rgba(252, 212, 25, 0.35)">Book tickets<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+<a href="book.html" data-cta="tickets" style="display: inline-flex; align-items: center; gap: 14px; min-height: 76px; padding: 0 46px; border-radius: 999px; background: #FCD419; color: #1A1408; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 600; font-size: clamp(22px, 2vw, 28px); text-decoration: none; box-shadow: 0 5px 0 #B89400, 0 0 50px rgba(252, 212, 25, 0.35)">Book tickets<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
 </div>
 </section>
 

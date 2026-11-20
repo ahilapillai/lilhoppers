@@ -174,6 +174,33 @@ The admin page is protected by a passcode stored on the server. It shows:
 - **Backend:** a Google Apps Script web app bound to the sheet, deployed as hello.lilhoppers@gmail.com. A timer job marks expired holds as Abandoned every 10 minutes. Capacity checks also do this on the spot.
 - **Hosting:** the public site and admin page are static files on GitHub Pages.
 
+## 9a. Analytics and search
+
+- **Where it runs:** the homepage and booking page only (`assets/js/analytics.js`), never the admin or door check-in pages. IDs live in `config.js` under `ANALYTICS`. An empty ID means that tool is off.
+- **Google Analytics 4: the booking funnel.** Events, in order:
+
+  | Event | When |
+  |---|---|
+  | `section_view` (section: party / activities / tickets) | the homepage section comes into view |
+  | `book_click` (cta_location: nav / hero / tickets) | a "Book tickets" button is tapped |
+  | `view_item` | the booking page has loaded the slots |
+  | `slot_select`, then `add_to_cart` (first slot only) | a slot is picked |
+  | `kids_change`, `add_extra_parent`, `add_santa_gift` | choices change |
+  | `begin_checkout` | the QR appears (the places are held) |
+  | `update_order` | a change while paying updates the QR |
+  | `save_qr`, `copy_upi_id`, `hold_expired`, `start_again` | on the payment panel |
+  | `add_payment_info` | "Payment done" |
+  | `screenshot_upload`, `screenshot_check` (result), `screenshot_remove` | on the details step |
+  | `purchase` (booking ID, total, items, deal code) | the booking is received; payment is still to be verified, so rejected bookings are counted here too |
+  | `booking_error` (step, reason) | anything that stops them: no slot, no photo consent, sold out, a missing field, a screenshot that isn't a payment, a server error |
+  | `contact_click` (phone / whatsapp / instagram), `directions_click` | contact and map links |
+
+  Because these are GA4's standard e-commerce events, **Reports → Monetization → Purchase journey / Checkout journey** shows the drop-off with no setup. For one step-by-step funnel use **Explore → Funnel exploration** with `view_item → add_to_cart → begin_checkout → add_payment_info → purchase`.
+- **Session recordings:** Microsoft Clarity, Hotjar or Contentsquare, whichever has an ID. Each recording is marked with the same event names (filter for `begin_checkout` without `purchase` to watch people who left at the QR), and Clarity also gets a `booking_step` tag.
+- **Privacy:** events carry only step names, counts and amounts: never names, email, phone or the screenshot. The details fields, the screenshot preview and the ticket's personal details are masked in recordings (`data-clarity-mask`, `data-hj-suppress`, `data-cs-mask`).
+- **Staff aren't counted:** opening the admin or check-in page marks that browser as "don't track". Any page with `?notrack=1` does the same; `?notrack=0` undoes it.
+- **Search (SEO):** the homepage title and description target "Christmas Carnival for Kids in Bengaluru" and "Christmas events for kids in Bengaluru (Bangalore)", the page copy names Bengaluru, and there is `Event` + `Organization` structured data (date, venue, ₹899 offer), a canonical URL, a 1200×630 share image (`assets/img/og-card.jpg`), `sitemap.xml`, and `robots.txt` pointing to it. Staff pages are `noindex` and blocked in `robots.txt`.
+
 ## 10. Non-functional
 
 - No counts or capacity in any public response from the server. The public API only returns sold-out flags.

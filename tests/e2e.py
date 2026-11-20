@@ -468,6 +468,18 @@ with sync_playwright() as p:
     check(not aerrors, 'analytics: no script errors ' + str(aerrors[:2]))
     an.close()
 
+    # ticket for a booking that was already verified when the details arrived: shown as confirmed
+    v = ab.new_page(); v.goto(BASE + '/book.html'); v.wait_for_selector('.bk-slot')
+    v.evaluate("() => { const c = window.LH_API.call; window.LH_API.call = (a, p) => c(a, p).then((r) => (a === 'submitBooking' && r.ok ? Object.assign(r, { status: 'Verified' }) : r)); }")
+    v.click('.bk-slot >> nth=2'); v.click('#toPay'); v.wait_for_selector('#payPanel:not([hidden])'); v.click('#paid')
+    v.fill('#parentName', 'Divya C'); v.fill('#email', 'divya@example.com'); v.fill('#phone', '95913 00331'); v.fill('#child0', 'Tanvi')
+    v.set_input_files('#shot', files=[{'name': 'pay.png', 'mimeType': 'image/png', 'buffer': cv2.imencode('.png', np.full((40, 40, 3), 200, np.uint8))[1].tobytes()}])
+    v.wait_for_selector('#shotCheck[data-state=unreadable]', timeout=90000)
+    v.click('#submitDetails'); v.wait_for_selector('#step-done:not([hidden])')
+    check(v.inner_text('#doneStatus') == 'Confirmed' and 'is-ok' in v.get_attribute('#doneStatus', 'class') and 'entry QR is on its way' in v.inner_text('#doneSub') and v.inner_text('#doneHelpText').startswith('Confirmed.'),
+          'book: a booking already verified when the details arrive shows "Confirmed" on the ticket')
+    v.close()
+
     # with no IDs in config.js nothing loads
     q = ab.new_page(); q.goto(BASE + '/book.html'); q.wait_for_selector('.bk-slot')
     check(q.evaluate('typeof window.gtag') == 'undefined' and q.locator('script[src*="clarity.ms"], script[src*="hotjar"], script[src*="contentsquare"]').count() == 0, 'analytics: nothing loads while the IDs are empty')

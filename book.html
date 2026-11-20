@@ -170,7 +170,7 @@
 <div class="bk-intro">
 <p class="bk-eyebrow">Booking received</p>
 <h1 id="doneTitle">Here's your ticket</h1>
-<p class="bk-sub">We're checking your payment now. Your confirmation email will come from hello.lilhoppers@gmail.com once it's verified, so keep an eye on your inbox (and spam).</p>
+<p class="bk-sub" id="doneSub">We're checking your payment now. Your confirmation email will come from hello.lilhoppers@gmail.com once it's verified, so keep an eye on your inbox (and spam).</p>
 <p class="bk-sub">Haven't received your confirmation in 2 days? Please WhatsApp us on <a href="https://wa.me/919686453295" target="_blank" rel="noopener" class="bk-wa">+91 96864 53295</a>.</p>
 </div>
 <article class="bk-ticket" aria-label="Your ticket">
@@ -183,7 +183,7 @@
 <div class="bk-perf" aria-hidden="true"></div>
 <div class="bk-done-head">
 <div><span class="bk-label">Booking ID</span><strong class="bk-id" data-fill="bookingId"></strong></div>
-<span class="bk-status"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Payment being checked</span>
+<span class="bk-status" id="doneStatus"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span id="doneStatusText">Payment being checked</span></span>
 </div>
 <dl class="bk-done-grid" data-clarity-mask="true" data-hj-suppress data-cs-mask>
 <div><dt>Parent</dt><dd data-fill="parentName"></dd></div>
@@ -193,7 +193,7 @@
 </dl>
 <dl class="bk-lines bk-lines-dark" data-lines="server"></dl>
 <div class="bk-total bk-total-dark"><span>Total</span><strong data-fill="total"></strong></div>
-<p class="bk-help">Not confirmed yet. Show your confirmation email at the entrance. <a href="https://share.google/GE3sdUk4LarPOcGPW" target="_blank" rel="noopener">Directions to Vata Vriksha</a></p>
+<p class="bk-help"><span id="doneHelpText">Not confirmed yet. Show your confirmation email at the entrance. </span><a href="https://share.google/GE3sdUk4LarPOcGPW" target="_blank" rel="noopener">Directions to Vata Vriksha</a></p>
 </div>
 </article>
 <div class="bk-done-actions"><a class="bk-btn" href="index.html">Back to the carnival</a><button type="button" class="bk-btn bk-btn-ghost" id="bookAnother">Book another</button></div>

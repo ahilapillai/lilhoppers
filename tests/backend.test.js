@@ -729,3 +729,29 @@ test('alerts stop before parents\' emails when the daily email quota runs low, a
   env.call({ action: 'submitBooking', bookingId: b.bookingId, ...details() });
   assert.equal(env.alerts.length, 0);
 });
+
+test('payment marked Verified in the sheet before the parent sends details: details are saved and the confirmation goes out', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 1 });
+  editStatus(env, hold.bookingId, 'Verified'); // admin saw the payment arrive and marked it straight away
+  assert.equal(env.mails.length, 0, 'no email address yet, so nothing is sent');
+  assert.match(bookingRow(env, hold.bookingId)['Admin Notes'], /Waiting for the parent's details/);
+
+  const res = env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  assert.equal(res.ok, true);
+  assert.equal(res.status, 'Verified');
+  const row = bookingRow(env, hold.bookingId);
+  assert.deepEqual([row['Status'], row['Payment Status'], row['Parent Name'], row['Email'], row['Child Names']], ['Verified', 'Verified', 'Meera Iyer', 'meera@example.com', 'Kid 1']);
+  assert.match(row['Screenshot URL'], /^https:\/\/drive\.google\.com/);
+  assert.ok(row['Confirmation Email Sent At'], 'confirmation recorded');
+  assert.equal(env.mails.length, 1);
+  assert.match(env.mails[0].subject, /You're booked/);
+  assert.equal(env.mails[0].to, 'meera@example.com');
+  assert.ok(env.mails[0].inlineImages && env.mails[0].inlineImages.entryqr, 'with the entry QR');
+  assert.equal(env.alerts.length, 1);
+  assert.match(env.alerts[0].htmlBody, /Already verified/);
+
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details() });
+  assert.equal(env.mails.length, 1, 'a second submit sends nothing more');
+  assert.equal(env.alerts.length, 1);
+});

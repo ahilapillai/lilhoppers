@@ -335,8 +335,9 @@ function apiSubmitBooking(p) {
   if (!d.ok) return d;
   var det = d.value;
 
-  // Duplicate submit (double tap, retry): answer with the saved booking.
-  if (found.b.status === STATUS.PENDING || found.b.status === STATUS.VERIFIED) return publicResult_(found.b);
+  // Duplicate submit (double tap, retry): answer with the saved booking. A booking that was marked Verified
+  // in the sheet before the parent sent their details is not a duplicate: its details still need saving.
+  if (alreadySubmitted_(found.b)) return publicResult_(found.b);
 
   // Save the screenshot before taking the lock so the lock is held only briefly.
   var screenshotUrl = '';
@@ -354,7 +355,7 @@ function apiSubmitBooking(p) {
     var row = findBooking_(rows, bookingId);
     if (!row) return { ok: false, code: 'NOT_FOUND', error: 'We could not find this booking. Please start again.' };
     var b = row.b;
-    if (b.status === STATUS.PENDING || b.status === STATUS.VERIFIED) return publicResult_(b);
+    if (alreadySubmitted_(b)) return publicResult_(b);
     if (b.status === STATUS.REJECTED) return { ok: false, code: 'REJECTED', error: 'This booking was cancelled. Please contact hello.lilhoppers@gmail.com.' };
 
     var details = {
@@ -364,6 +365,14 @@ function apiSubmitBooking(p) {
     var check = checkFromPayload_(p, det.hasShot);
     Object.keys(check).forEach(function (k) { details[k] = check[k]; });
 
+    // Already verified (marked in the sheet from the payment, before these details arrived): keep it
+    // verified, save the details, and send the confirmation instead of "payment being checked".
+    if (b.status === STATUS.VERIFIED) {
+      details['Admin Notes'] = appendNote_(b.adminNotes, 'Details arrived after the payment was marked Verified.');
+      updateBooking_(row.rowIndex, details);
+      var v = findBooking_(readBookings(), bookingId);
+      return { ok: true, booking: v.b, rowIndex: v.rowIndex, verified: true };
+    }
     // Hold expired or abandoned: only keep the booking if the places are still free.
     if (!(b.status === STATUS.AWAITING && holdIsLive(b, now))) {
       expireHolds_(rows, now);
@@ -392,6 +401,19 @@ function apiSubmitBooking(p) {
     delete outcome.alertFor;
   }
   if (!outcome.ok || !outcome.booking) return outcome;
+  if (outcome.verified) {
+    if (!outcome.booking.confirmationEmailSentAt) {
+      try {
+        sendConfirmationEmail_(outcome.booking);
+        updateBooking_(outcome.rowIndex, { 'Confirmation Email Sent At': new Date() });
+      } catch (err) {
+        console.error('Confirmation email failed: ' + err);
+        updateBooking_(outcome.rowIndex, { 'Admin Notes': appendNote_(outcome.booking.adminNotes, 'Confirmation email failed: ' + err) });
+      }
+    }
+    try { sendBookingAlert_(outcome.booking, false); } catch (err) { console.error('Booking alert failed: ' + err); }
+    return publicResult_(outcome.booking);
+  }
   try {
     sendPendingEmail_(outcome.booking);
     updateBooking_(outcome.rowIndex, { 'Pending Email Sent At': new Date() });
@@ -400,6 +422,13 @@ function apiSubmitBooking(p) {
   }
   try { sendBookingAlert_(outcome.booking, false); } catch (err) { console.error('Booking alert failed: ' + err); }
   return publicResult_(outcome.booking);
+}
+
+/** True once the parent's details (and proof) have been saved for this booking. */
+function alreadySubmitted_(b) {
+  if (b.status === STATUS.PENDING) return true;
+  if (b.status === STATUS.VERIFIED) return !!(b.submittedAt || b.email);
+  return false;
 }
 
 function publicResult_(b) {
@@ -811,6 +840,8 @@ function sendBookingAlert_(b, refund) {
   var html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#2A1D45;max-width:560px">' +
     (refund
       ? '<p style="padding:12px 14px;background:#FDEEEC;border-radius:10px;color:#9F2A1E"><strong>This parent paid after their 20-minute hold ran out, and the slot is now full.</strong> The booking is saved as Rejected. Please refund them, or raise the slot\'s capacity and verify it.</p>'
+      : b.status === STATUS.VERIFIED
+      ? '<p style="padding:12px 14px;background:#E3F5E9;border-radius:10px;color:#1D6B3A"><strong>Already verified.</strong> You marked this payment Verified before the parent sent their details, so they have now been emailed their confirmation with the entry QR.</p>'
       : '<p style="padding:12px 14px;background:#FFF6D1;border-radius:10px;color:#5B4A00"><strong>Payment to check.</strong> Match the screenshot with your UPI app, then verify it on the admin page or pick <em>Verified</em> in the sheet. The parent already has the "payment being checked" email.</p>') +
     '<table style="border-collapse:collapse">' +
     row('Booking', '<strong>' + escapeHtml_(b.bookingId) + '</strong>') +
@@ -992,6 +1023,9 @@ function onBookingEdit(e) {
           updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.VERIFIED, 'Verified Amount': amount, 'Verified At': new Date() });
         }
         if (!b.confirmationEmailSentAt && b.email) toConfirm.push(String(b.bookingId));
+        if (!b.email && String(b.adminNotes || '').indexOf('Waiting for the parent') < 0) {
+          updateBooking_(row.rowIndex, { 'Admin Notes': appendNote_(b.adminNotes, "Waiting for the parent's details: the confirmation email goes out as soon as they submit.") });
+        }
       } else if (b.status === STATUS.REJECTED) {
         if (b.paymentStatus !== PAYMENT.REJECTED) updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.REJECTED });
         if (!b.rejectionEmailSentAt && b.email) toReject.push(String(b.bookingId));

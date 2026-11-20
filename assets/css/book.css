@@ -200,6 +200,7 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-label,.bk-done-grid dt{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6E6482}
 .bk-id{display:block;font-family:'Fredoka',ui-rounded,sans-serif;font-weight:600;font-size:30px;letter-spacing:.04em}
 .bk-status{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:#FFF6D1;color:#5B4A00;font-size:14px;font-weight:800}
+.bk-status.is-ok{background:#E3F5E9;color:#1D6B3A}
 .bk-done-grid{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:16px 24px}
 .bk-done-grid dd{margin:4px 0 0;font-size:16px;font-weight:700;word-break:break-word}
 .bk-lines-dark dt{color:#5E5470}

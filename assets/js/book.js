@@ -537,7 +537,8 @@
         bookingId: res.bookingId, amounts: res.amounts, slotTime: state.hold.slot.time,
         parentName: v.parentName, childNames: v.childNames.join(', '),
         phone: '+91 ' + v.phone.slice(0, 5) + ' ' + v.phone.slice(5),
-        paymentRef: 'Screenshot uploaded'
+        paymentRef: 'Screenshot uploaded',
+        verified: res.status === 'Verified'
       };
       clearInterval(timer);
       go('done');
@@ -557,6 +558,13 @@
     fill('phone', r.phone);
     fill('paymentRef', r.paymentRef);
     fill('total', P.rupees(r.amounts.total));
+    // Already verified (the payment was matched before the details arrived): show it as confirmed.
+    $('doneStatus').classList.toggle('is-ok', !!r.verified);
+    $('doneStatusText').textContent = r.verified ? 'Confirmed' : 'Payment being checked';
+    $('doneSub').textContent = r.verified
+      ? "Your payment is verified and your booking is confirmed. Your confirmation email with the entry QR is on its way from hello.lilhoppers@gmail.com (check spam too)."
+      : "We're checking your payment now. Your confirmation email will come from hello.lilhoppers@gmail.com once it's verified, so keep an eye on your inbox (and spam).";
+    $('doneHelpText').textContent = r.verified ? 'Confirmed. Show the QR in your confirmation email at the entrance. ' : 'Not confirmed yet. Show your confirmation email at the entrance. ';
     document.querySelectorAll('#step-done [data-lines="server"]').forEach(function (dl) { renderLines(dl, r.amounts); });
   }
   $('bookAnother').addEventListener('click', function () {

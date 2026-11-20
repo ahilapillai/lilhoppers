@@ -17,6 +17,10 @@ var CONFIG = {
   UPI_PAYEE: 'Lil Hoppers',
   SENDER_EMAIL: 'hello.lilhoppers@gmail.com',
   SENDER_NAME: "Lil' Hoppers",
+  // A short "new booking" alert goes here for every booking submitted (and a "refund needed" alert when a
+  // payment arrives after the slot filled up). Add more addresses with commas, e.g. 'a@x.com, b@y.com'.
+  // Empty = no alerts.
+  ALERT_EMAIL: 'hello.lilhoppers@gmail.com',
   HOLD_MINUTES: 20,
   MAX_CHILDREN: 10,
   MAX_SCREENSHOT_BYTES: 5 * 1024 * 1024,
@@ -371,7 +375,7 @@ function apiSubmitBooking(p) {
         details['Payment Status'] = PAYMENT.PENDING;
         details['Rejection Reason'] = 'Slot full after hold expired — refund due';
         updateBooking_(row.rowIndex, details);
-        return { ok: false, code: 'FULL_AFTER_EXPIRY', error: 'Sorry, your 20-minute hold ran out and ' + (slot ? slot.label : 'the slot') + ' filled up. We have saved your payment details and will refund you. We will contact you at ' + det.email + '.' };
+        return { alertFor: findBooking_(readBookings(), bookingId).b, ok: false, code: 'FULL_AFTER_EXPIRY', error: 'Sorry, your 20-minute hold ran out and ' + (slot ? slot.label : 'the slot') + ' filled up. We have saved your payment details and will refund you. We will contact you at ' + det.email + '.' };
       }
     }
     details['Status'] = STATUS.PENDING;
@@ -382,6 +386,10 @@ function apiSubmitBooking(p) {
     return { ok: true, booking: fresh.b, rowIndex: fresh.rowIndex };
   });
 
+  if (outcome.alertFor) {
+    try { sendBookingAlert_(outcome.alertFor, true); } catch (err) { console.error('Refund alert failed: ' + err); }
+    delete outcome.alertFor;
+  }
   if (!outcome.ok || !outcome.booking) return outcome;
   try {
     sendPendingEmail_(outcome.booking);
@@ -389,6 +397,7 @@ function apiSubmitBooking(p) {
   } catch (err) {
     console.error('Pending email failed: ' + err);
   }
+  try { sendBookingAlert_(outcome.booking, false); } catch (err) { console.error('Booking alert failed: ' + err); }
   return publicResult_(outcome.booking);
 }
 
@@ -781,6 +790,42 @@ function sendRejectionEmail_(b) {
       '<p>Payment reference we received: <strong>' + escapeHtml_(b.utr || 'Screenshot uploaded') + '</strong></p>'
   );
   sendMail_(b.email, subject, html);
+}
+
+/** The alert to Lil' Hoppers for each booking submitted: who, what, the total, and links to check the payment. */
+function sendBookingAlert_(b, refund) {
+  if (!CONFIG.ALERT_EMAIL) return;
+  // Parents' emails matter more: Gmail lets a script email about 100 people a day, so alerts stop first.
+  if (MailApp.getRemainingDailyQuota() < 25) { console.warn('Booking alert skipped to save email quota for parents.'); return; }
+  var a = storedAmounts_(b);
+  var kids = a.children + (a.children === 1 ? ' kid' : ' kids');
+  var phone = String(b.phone || '').replace(/\D/g, '');
+  var subject = refund
+    ? 'Refund needed: ' + b.bookingId + ' paid after ' + b.slotTime + ' filled up (' + rupees(a.total) + ')'
+    : 'New booking ' + b.bookingId + ' · ' + b.slotTime + ' · ' + kids + ' · ' + rupees(a.total);
+  var row = function (k, v) { return '<tr><td style="padding:5px 12px 5px 0;color:#5E5470;vertical-align:top">' + k + '</td><td style="padding:5px 0">' + v + '</td></tr>'; };
+  var extras = [];
+  if (a.extraParent) extras.push('extra parent');
+  if (a.giftQty) extras.push(a.giftQty + (a.giftQty === 1 ? ' Santa gift' : ' Santa gifts'));
+  var html = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#2A1D45;max-width:560px">' +
+    (refund
+      ? '<p style="padding:12px 14px;background:#FDEEEC;border-radius:10px;color:#9F2A1E"><strong>This parent paid after their 20-minute hold ran out, and the slot is now full.</strong> The booking is saved as Rejected. Please refund them, or raise the slot\'s capacity and verify it.</p>'
+      : '<p style="padding:12px 14px;background:#FFF6D1;border-radius:10px;color:#5B4A00"><strong>Payment to check.</strong> Match the screenshot with your UPI app, then verify it on the admin page or pick <em>Verified</em> in the sheet. The parent already has the "payment being checked" email.</p>') +
+    '<table style="border-collapse:collapse">' +
+    row('Booking', '<strong>' + escapeHtml_(b.bookingId) + '</strong>') +
+    row('Slot', escapeHtml_(b.slotTime)) +
+    row('Parent', escapeHtml_(b.parentName)) +
+    row('Phone', escapeHtml_(b.phone) + (phone.length === 10 ? ' · <a href="https://wa.me/91' + phone + '">WhatsApp</a>' : '')) +
+    row('Email', '<a href="mailto:' + escapeHtml_(b.email) + '">' + escapeHtml_(b.email) + '</a>') +
+    row('Children', escapeHtml_(kids + ': ' + b.childNames)) +
+    row('Add-ons', escapeHtml_(extras.length ? extras.join(', ') : 'none')) +
+    row('Total', '<strong>' + rupees(a.total) + '</strong>' + (a.couponCode ? ' (' + escapeHtml_(a.couponCode) + ')' : '')) +
+    row('Screenshot check', escapeHtml_([b.screenshotCheck, b.screenshotShows].filter(function (x) { return x; }).join(' · ') || 'none')) +
+    '</table><p>' +
+    (b.screenshotUrl ? '<a href="' + escapeHtml_(b.screenshotUrl) + '">Payment screenshot</a> · ' : '') +
+    '<a href="' + CONFIG.SITE_URL + '/admin">Admin page</a> · ' +
+    '<a href="https://docs.google.com/spreadsheets/d/' + spreadsheet_().getId() + '/edit">Bookings sheet</a></p></div>';
+  MailApp.sendEmail({ to: CONFIG.ALERT_EMAIL, subject: subject, htmlBody: html, name: "Lil' Hoppers bookings" });
 }
 
 /** The entry QR: a link to the volunteer check-in page for this booking. */

@@ -43,7 +43,9 @@ function load() {
   };
   const props = {};
   const cache = {};
-  const mails = [];
+  const mails = []; // emails to parents
+  const alerts = []; // booking alerts to Lil' Hoppers
+  const quota = { left: 100 };
   const files = [];
   let lockHeld = false;
   const triggers = [];
@@ -71,7 +73,7 @@ function load() {
       newBlob: (bytes, type, name) => ({ bytes, type, name }),
       getUuid: () => (uuidN++) + 'bcdef12-3456-7890-abcd-ef1234567890'
     },
-    MailApp: { sendEmail: (m) => mails.push(m) },
+    MailApp: { sendEmail: (m) => (m.to === 'hello.lilhoppers@gmail.com' ? alerts : mails).push(m), getRemainingDailyQuota: () => quota.left },
     Session: { getEffectiveUser: () => ({ getEmail: () => 'hello.lilhoppers@gmail.com' }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (s) => ({ body: s, setMimeType() { return this; } }) },
     ScriptApp: {
@@ -87,7 +89,7 @@ function load() {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../apps-script/Code.gs'), 'utf8'), ctx);
   ctx.setup();
   const call = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
-  return { ctx, call, sheets, props, mails, files, triggers };
+  return { ctx, call, sheets, props, mails, alerts, quota, files, triggers };
 }
 
 const details = (n = 1, extra = {}) => ({
@@ -666,4 +668,54 @@ test('a booking saved before the group deals keeps its full-price total', () => 
   const body = env.mails[0].htmlBody;
   assert.match(body, /<strong>₹1,798<\/strong>/);
   assert.doesNotMatch(body, /LILHOP|support fee/);
+});
+
+test('every booking submitted sends Lil\' Hoppers a "new booking" alert, once', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S2', children: 2, extraParent: true, giftQty: 1 });
+  assert.equal(env.alerts.length, 0, 'no alert for a hold');
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(2) });
+  assert.equal(env.alerts.length, 1);
+  const m = env.alerts[0];
+  assert.equal(m.to, 'hello.lilhoppers@gmail.com');
+  assert.equal(m.subject, 'New booking ' + hold.bookingId + ' · 4:00 PM – 5:30 PM · 2 kids · ₹2,135');
+  assert.match(m.htmlBody, /Meera Iyer/);
+  assert.match(m.htmlBody, /https:\/\/wa\.me\/919845012345/);
+  assert.match(m.htmlBody, /Kid 1, Kid 2/);
+  assert.match(m.htmlBody, /extra parent, 1 Santa gift/);
+  assert.match(m.htmlBody, /LILHOP2/);
+  assert.match(m.htmlBody, /href="https:\/\/drive\.google\.com\/file\/d\/1">Payment screenshot/);
+  assert.match(m.htmlBody, /https:\/\/lilhoppers\.co\/admin/);
+  assert.match(m.htmlBody, /docs\.google\.com\/spreadsheets\/d\/sheet-id/);
+  assert.equal(env.mails.length, 1, 'the parent still gets their email');
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(2) });
+  assert.equal(env.alerts.length, 1, 'a double submit sends no second alert');
+});
+
+test('a payment that arrives after the slot filled up sends a "refund needed" alert', () => {
+  const env = load();
+  const mine = env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 });
+  const sh = env.sheets.Bookings.data;
+  sh.find((r) => r[0] === mine.bookingId)[sh[0].indexOf('Hold Expires At')] = new Date(Date.now() - 1000);
+  for (let i = 0; i < 31; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  const res = env.call({ action: 'submitBooking', bookingId: mine.bookingId, ...details(2) });
+  assert.equal(res.code, 'FULL_AFTER_EXPIRY');
+  assert.equal(res.alertFor, undefined, 'booking details are not sent back to the page');
+  assert.equal(env.alerts.length, 1);
+  assert.match(env.alerts[0].subject, new RegExp('^Refund needed: ' + mine.bookingId));
+  assert.match(env.alerts[0].htmlBody, /Please refund them/);
+});
+
+test('alerts stop before parents\' emails when the daily email quota runs low, and can be switched off', () => {
+  const env = load();
+  env.quota.left = 20;
+  const a = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: a.bookingId, ...details() });
+  assert.equal(env.alerts.length, 0);
+  assert.equal(env.mails.length, 1, 'the parent still gets their email');
+  env.quota.left = 100;
+  env.ctx.CONFIG.ALERT_EMAIL = '';
+  const b = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 0 });
+  env.call({ action: 'submitBooking', bookingId: b.bookingId, ...details() });
+  assert.equal(env.alerts.length, 0);
 });

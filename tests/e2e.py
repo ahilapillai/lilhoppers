@@ -61,6 +61,7 @@ with sync_playwright() as p:
     check(page.locator('template').count() == 0, 'landing: all templates expanded')
     body = page.inner_text('body')
     check('₹899' in body and '₹799' not in body, 'landing: shows ₹899, no old ₹799')
+    check(page.inner_text('.lh-cta-stack').split('\n')[-1].strip() == 'Inclusive of all activities', 'landing: "Inclusive of all activities" under the hero Book button')
     check('Inclusive of all event activities.' in body and '₹39' not in body and 'support fee' not in body, 'landing: "Inclusive of all event activities" under the price, no extra fee')
     check('Christmas Carnival' in body, 'landing: says Christmas Carnival')
     # ---------- SEO ----------

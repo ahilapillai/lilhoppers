@@ -755,3 +755,16 @@ test('payment marked Verified in the sheet before the parent sends details: deta
   assert.equal(env.mails.length, 1, 'a second submit sends nothing more');
   assert.equal(env.alerts.length, 1);
 });
+
+test('email and phone are required: a booking without them is refused and nothing is saved', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { email: '' }) }).code, 'BAD_EMAIL');
+  assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { email: '   ' }) }).code, 'BAD_EMAIL');
+  assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { phone: '' }) }).code, 'BAD_PHONE');
+  const p = details(1); delete p.email; delete p.phone;
+  assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...p }).code, 'BAD_EMAIL');
+  const row = bookingRow(env, hold.bookingId);
+  assert.deepEqual([row['Status'], row['Email'], row['Phone']], ['Awaiting Payment', '', '']);
+  assert.equal(env.mails.length + env.alerts.length, 0);
+});

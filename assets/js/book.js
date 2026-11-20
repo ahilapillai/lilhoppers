@@ -14,18 +14,22 @@
 
   var state = {
     step: 'choose', slots: [], slotId: null, children: 1, extraParent: false,
-    giftOn: false, giftQty: 1, giftTouched: false, photoOk: true, hold: null, holdStale: false, result: null, shot: null
+    giftOn: false, giftQty: 1, giftTouched: false, photoOk: true, hold: null, holdStale: false, result: null, shot: null,
+    email: '', phone: ''
   };
   try {
     var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
     if (saved && (saved.hold || saved.result)) Object.assign(state, saved);
+    else if (saved) { state.email = saved.email || ''; state.phone = saved.phone || ''; } // keep the contact typed so far
   } catch (e) { /* ignore */ }
+  state.email = state.email || ''; state.phone = state.phone || '';
 
   function persist() {
     try {
       sessionStorage.setItem(KEY, JSON.stringify({
         step: state.step, slotId: state.slotId, children: state.children, extraParent: state.extraParent,
-        giftOn: state.giftOn, giftQty: state.giftQty, giftTouched: state.giftTouched, hold: state.hold, holdStale: state.holdStale, result: state.result
+        giftOn: state.giftOn, giftQty: state.giftQty, giftTouched: state.giftTouched, hold: state.hold, holdStale: state.holdStale, result: state.result,
+        email: state.email, phone: state.phone
       }));
     } catch (e) { /* private mode */ }
   }
@@ -239,6 +243,39 @@
     closeConsent();
   });
 
+  /* Contact: email and phone are needed before the QR, so every booking that might get paid can be
+     confirmed (or followed up) even if the parent closes the page after paying. */
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  function phoneDigits(v) { var d = String(v || '').replace(/\D/g, ''); return d.length === 12 && d.indexOf('91') === 0 ? d.slice(2) : d; }
+  function prettyPhone(d) { return d.length > 5 ? d.slice(0, 5) + ' ' + d.slice(5) : d; }
+  var CONTACT_MSGS = { email: 'Add a valid email address.', phone: 'Add a 10-digit mobile number.' };
+  function contactProblem() {
+    if (!EMAIL_RE.test(state.email) || state.email.length > 120) return 'email';
+    if (!/^[6-9]\d{9}$/.test(state.phone)) return 'phone';
+    return '';
+  }
+  function needContact() {
+    var id = contactProblem();
+    if (!id) return false;
+    T.track('booking_error', { step: state.step, reason: id });
+    $(id).setAttribute('aria-invalid', 'true'); $(id).focus();
+    showError($('chooseError'), CONTACT_MSGS[id]);
+    return true;
+  }
+  $('email').value = state.email;
+  $('phone').value = prettyPhone(state.phone);
+  $('email').addEventListener('input', function (e) { state.email = e.target.value.trim(); contactEdited(e.target); });
+  $('phone').addEventListener('input', function (e) {
+    e.target.value = e.target.value.replace(/[^\d +]/g, '').slice(0, 16);
+    state.phone = phoneDigits(e.target.value); contactEdited(e.target);
+  });
+  function contactEdited(el) {
+    el.removeAttribute('aria-invalid');
+    var err = $('chooseError');
+    if (err.textContent === CONTACT_MSGS.email || err.textContent === CONTACT_MSGS.phone) showError(err, '');
+    persist();
+  }
+
   /* Holding places: "Pay" asks for a hold; later changes update the same booking. */
   var holdSeq = 0, reholdTimer = null;
   function setUpdating(on) {
@@ -258,6 +295,7 @@
     if (first) $('toPay').disabled = true;
     API.call('createHold', {
       slotId: state.slotId, children: state.children, extraParent: state.extraParent, giftQty: giftQty(),
+      email: state.email, phone: state.phone,
       previousBookingId: state.hold ? state.hold.bookingId : undefined
     }).then(function (res) {
       if (seq !== holdSeq) return; // a newer change has been sent since
@@ -265,6 +303,7 @@
       setUpdating(false);
       if (!res.ok) {
         T.track('booking_error', { step: first ? 'hold' : 'update', reason: res.code || 'error' });
+        if (res.code === 'BAD_EMAIL' || res.code === 'BAD_PHONE') { var f = $(res.code === 'BAD_EMAIL' ? 'email' : 'phone'); f.setAttribute('aria-invalid', 'true'); f.focus(); }
         if (res.code === 'SOLD_OUT') { var s = slotById(state.slotId); if (s) s.soldOut = true; state.slotId = null; }
         if (state.hold) state.holdStale = true;
         persist();
@@ -287,6 +326,7 @@
 
   $('toPay').addEventListener('click', function () {
     if (!state.slotId) { showError($('chooseError'), 'Pick a time first.'); T.track('booking_error', { step: 'choose', reason: 'no_slot' }); return; }
+    if (needContact()) return;
     if (needConsent()) return;
     showError($('chooseError'), '');
     requestHold();
@@ -375,6 +415,7 @@
     if (navigator.clipboard) navigator.clipboard.writeText(state.hold.upi.id).then(done, done); else done();
   });
   $('paid').addEventListener('click', function () {
+    if (needContact()) return; // edited after the QR appeared
     if (needConsent()) return;
     T.track('add_payment_info', T.order(state.hold.amounts, { payment_type: 'UPI' }));
     go('details');
@@ -410,7 +451,6 @@
     }
   }
 
-  $('phone').addEventListener('input', function (e) { e.target.value = e.target.value.replace(/[^\d ]/g, '').slice(0, 14); });
 
   function readShot(file) {
     return new Promise(function (resolve, reject) {
@@ -493,15 +533,12 @@
   function validate() {
     invalid = '';
     var name = $('parentName').value.trim();
-    var email = $('email').value.trim();
-    var phone = $('phone').value.replace(/\D/g, '');
     var kids = Array.prototype.map.call($('childFields').querySelectorAll('input'), function (i) { return i.value.trim(); });
     var bad = function (id, msg) { invalid = id; var el = $(id); if (el) { el.setAttribute('aria-invalid', 'true'); el.focus(); } return msg; };
     document.querySelectorAll('#detailsForm [aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
     if (name.length < 2) return bad('parentName', "Add the parent's name.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return bad('email', 'Add a valid email address.');
-    if (!/^[6-9]\d{9}$/.test(phone)) return bad('phone', 'Add a 10-digit mobile number.');
     for (var i = 0; i < kids.length; i++) if (!kids[i]) return bad('child' + i, kids.length === 1 ? "Add your child's name." : "Add each child's name.");
+    if (contactProblem()) { invalid = 'contact'; return 'Add your email and phone number: tap "Back to payment" to fill them in.'; }
     if (!state.shot) { $('uploadBox').classList.add('is-missing'); return bad('shot', 'Upload the screenshot of your payment.'); }
     if (state.shot && state.shot.check && state.shot.check.status === 'checking') { invalid = 'screenshot_checking'; return "Hold on, we're still checking your screenshot."; }
     if (state.shot && state.shot.check && state.shot.check.status === 'fail') {
@@ -509,7 +546,7 @@
       invalid = 'screenshot_not_payment';
       return "This doesn't look like a payment to Lil' Hoppers. Please upload the screenshot of the payment you just made.";
     }
-    return { parentName: name, email: email, phone: phone, childNames: kids };
+    return { parentName: name, email: state.email, phone: state.phone, childNames: kids };
   }
 
   $('detailsForm').addEventListener('submit', function (e) {

@@ -182,6 +182,14 @@ fieldset.bk-card{display:flex;flex-direction:column;gap:14px}
 .bk-phone{display:flex;align-items:center;height:50px;border:1.5px solid #D9CFEA;border-radius:12px;overflow:hidden}
 .bk-phone span{padding-left:14px;font-weight:800;color:#5E5470}
 .bk-phone input{border:0;height:100%;border-radius:0;padding-left:8px}
+/* Contact card on the dark first step */
+.bk-contact .bk-field label{color:#FFF8EC}
+.bk-contact .bk-phone{background:#fff}
+.bk-contact .bk-phone:focus-within,.bk-contact .bk-field input:focus{outline:3px solid #FCD419;outline-offset:1px}
+.bk-contact .bk-phone input:focus{outline:0}
+.bk-contact .bk-phone:has(input[aria-invalid=true]){border-color:#FF8A7A}
+.bk-contact .bk-field input[aria-invalid=true]{border-color:#FF8A7A}
+.bk-contact-note{margin:0;font-size:14px}
 .bk-proof{display:flex;flex-direction:column;gap:14px;padding-top:18px;border-top:1.5px dashed #E2D9EF}
 .bk-or{display:flex;align-items:center;gap:12px;color:#6E6482;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
 .bk-or::before,.bk-or::after{content:"";flex:1;height:1.5px;background:#E2D9EF}

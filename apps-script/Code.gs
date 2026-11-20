@@ -164,14 +164,22 @@ function holdIsLive(b, nowMs) {
   return isFinite(t) && t > nowMs;
 }
 
-function validateDetails(p, children) {
-  var name = String(p.parentName || '').trim();
-  if (name.length < 2 || name.length > 80) return { ok: false, code: 'BAD_NAME', error: "Add the parent's name." };
+/** Email and phone: asked for before the payment QR, and checked again with the details. */
+function validateContact_(p) {
   var email = String(p.email || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 120) return { ok: false, code: 'BAD_EMAIL', error: 'Add a valid email address.' };
   var phone = String(p.phone || '').replace(/\D/g, '');
   if (phone.length === 12 && phone.indexOf('91') === 0) phone = phone.slice(2);
   if (!/^[6-9]\d{9}$/.test(phone)) return { ok: false, code: 'BAD_PHONE', error: 'Add a 10-digit mobile number.' };
+  return { ok: true, value: { email: email, phone: phone } };
+}
+
+function validateDetails(p, children) {
+  var name = String(p.parentName || '').trim();
+  if (name.length < 2 || name.length > 80) return { ok: false, code: 'BAD_NAME', error: "Add the parent's name." };
+  var contact = validateContact_(p);
+  if (!contact.ok) return contact;
+  var email = contact.value.email, phone = contact.value.phone;
   var names = (Array.isArray(p.childNames) ? p.childNames : []).map(function (n) { return String(n || '').trim(); });
   if (names.length !== children || names.some(function (n) { return n.length < 1 || n.length > 60; })) {
     return { ok: false, code: 'BAD_CHILD_NAMES', error: children === 1 ? "Add your child's name." : "Add each child's name." };
@@ -276,6 +284,14 @@ function apiCreateHold(p) {
   var v = validateSelection(p, slots);
   if (!v.ok) return v;
   var sel = v.value;
+  // The booking page asks for email and phone before showing the QR, so every hold that might get paid
+  // can be confirmed or followed up. (A page loaded before this change sends neither: still allowed.)
+  var contact = null;
+  if (p.email !== undefined || p.phone !== undefined) {
+    var c = validateContact_(p);
+    if (!c.ok) return c;
+    contact = c.value;
+  }
   return withLock(function () {
     var now = Date.now();
     var rows = readBookings();
@@ -299,6 +315,7 @@ function apiCreateHold(p) {
       'Ticket Subtotal': amounts.ticketSubtotal, 'Santa Gift Qty': amounts.giftQty, 'Santa Gift Subtotal': amounts.giftSubtotal,
       'Expected Total': amounts.total, 'Status': STATUS.AWAITING, 'Payment Status': PAYMENT.NOT_PAID, 'Hold Expires At': holdExpires
     };
+    if (contact) { fields['Email'] = contact.email; fields['Phone'] = contact.phone; }
     var id;
     if (prev) {
       id = String(prev.b.bookingId);
@@ -427,7 +444,7 @@ function apiSubmitBooking(p) {
 /** True once the parent's details (and proof) have been saved for this booking. */
 function alreadySubmitted_(b) {
   if (b.status === STATUS.PENDING) return true;
-  if (b.status === STATUS.VERIFIED) return !!(b.submittedAt || b.email);
+  if (b.status === STATUS.VERIFIED) return !!b.submittedAt;
   return false;
 }
 
@@ -607,7 +624,8 @@ function apiAdminReject(p) {
 /** Emails the parent that their payment couldn't be verified, once per booking. Returns true (sent), false (failed) or null (nothing to send). */
 function sendRejectionOnce_(bookingId) {
   var row = findBooking_(readBookings(), bookingId);
-  if (!row || !row.b.email || row.b.rejectionEmailSentAt) return null;
+  // Only bookings that sent their payment proof get the "couldn't verify" email (a hold has an email too).
+  if (!row || !row.b.email || !row.b.submittedAt || row.b.rejectionEmailSentAt) return null;
   try {
     sendRejectionEmail_(row.b);
     updateBooking_(row.rowIndex, { 'Rejection Email Sent At': new Date() });
@@ -797,7 +815,7 @@ function sendPendingEmail_(b) {
 function sendConfirmationEmail_(b) {
   var subject = "You're booked! Christmas Carnival, " + b.slotTime + ' (' + b.bookingId + ')';
   var html = emailShell_(
-    "You're booked, " + escapeHtml_(firstName_(b.parentName)) + '!',
+    b.parentName ? "You're booked, " + escapeHtml_(firstName_(b.parentName)) + '!' : "You're booked!",
     '<p>We have verified your payment. See you at the ' + escapeHtml_(CONFIG.EVENT_NAME) + '!</p>' +
       bookingTable_(b, true) +
       '<p><strong>When:</strong> ' + escapeHtml_(CONFIG.EVENT_DATE) + ', ' + escapeHtml_(b.slotTime) + '<br>' +
@@ -841,7 +859,7 @@ function sendBookingAlert_(b, refund) {
     (refund
       ? '<p style="padding:12px 14px;background:#FDEEEC;border-radius:10px;color:#9F2A1E"><strong>This parent paid after their 20-minute hold ran out, and the slot is now full.</strong> The booking is saved as Rejected. Please refund them, or raise the slot\'s capacity and verify it.</p>'
       : b.status === STATUS.VERIFIED
-      ? '<p style="padding:12px 14px;background:#E3F5E9;border-radius:10px;color:#1D6B3A"><strong>Already verified.</strong> You marked this payment Verified before the parent sent their details, so they have now been emailed their confirmation with the entry QR.</p>'
+      ? '<p style="padding:12px 14px;background:#E3F5E9;border-radius:10px;color:#1D6B3A"><strong>Already verified.</strong> You marked this payment Verified before the parent sent their details. Their confirmation with the entry QR has been emailed.</p>'
       : '<p style="padding:12px 14px;background:#FFF6D1;border-radius:10px;color:#5B4A00"><strong>Payment to check.</strong> Match the screenshot with your UPI app, then verify it on the admin page or pick <em>Verified</em> in the sheet. The parent already has the "payment being checked" email.</p>') +
     '<table style="border-collapse:collapse">' +
     row('Booking', '<strong>' + escapeHtml_(b.bookingId) + '</strong>') +
@@ -896,9 +914,9 @@ function bookingTable_(b, verified) {
   var rows = [
     ['Booking ID', '<strong>' + escapeHtml_(b.bookingId) + '</strong>'],
     ['Slot', escapeHtml_(CONFIG.EVENT_DATE + ', ' + b.slotTime)],
-    ['Children', escapeHtml_(b.childNames)],
     [a.children + (a.children === 1 ? ' kid' : ' kids') + ' + ' + a.children + (a.children === 1 ? ' parent' : ' parents'), rupees(a.discount ? a.ticketsAtFull : a.ticketSubtotal)]
   ];
+  if (b.childNames) rows.splice(2, 0, ['Children', escapeHtml_(b.childNames)]); // not known yet if verified before the details
   if (a.extraParent) rows.push(['Extra parent', rupees(a.extraParentCharge)]);
   if (a.giftQty) rows.push(['Personalised gift from Santa (' + a.giftQty + ' × ' + rupees(CONFIG.PRICES.SANTA_GIFT) + ')', rupees(a.giftSubtotal)]);
   if (a.bookingFee) rows.push(['Booking &amp; support fee', rupees(a.bookingFee)]);
@@ -1028,7 +1046,7 @@ function onBookingEdit(e) {
         }
       } else if (b.status === STATUS.REJECTED) {
         if (b.paymentStatus !== PAYMENT.REJECTED) updateBooking_(row.rowIndex, { 'Payment Status': PAYMENT.REJECTED });
-        if (!b.rejectionEmailSentAt && b.email) toReject.push(String(b.bookingId));
+        if (!b.rejectionEmailSentAt && b.email && b.submittedAt) toReject.push(String(b.bookingId));
       }
     });
     return { ok: true };

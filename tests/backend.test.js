@@ -88,7 +88,12 @@ function load() {
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../apps-script/Code.gs'), 'utf8'), ctx);
   ctx.setup();
-  const call = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
+  // The booking page sends email and phone with every hold; tests that leave the keys out get them filled in.
+  // (Pass email: undefined to send a hold without contact, like a page loaded before that change.)
+  const call = (body) => {
+    if (body.action === 'createHold' && !('email' in body) && !('phone' in body)) body = { ...body, email: 'meera@example.com', phone: '98450 12345' };
+    return JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
+  };
   return { ctx, call, sheets, props, mails, alerts, quota, files, triggers };
 }
 
@@ -730,9 +735,9 @@ test('alerts stop before parents\' emails when the daily email quota runs low, a
   assert.equal(env.alerts.length, 0);
 });
 
-test('payment marked Verified in the sheet before the parent sends details: details are saved and the confirmation goes out', () => {
+test('a hold without contact (page from before the change) marked Verified early: the confirmation goes out when the details arrive', () => {
   const env = load();
-  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 1 });
+  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 1, email: undefined, phone: undefined });
   editStatus(env, hold.bookingId, 'Verified'); // admin saw the payment arrive and marked it straight away
   assert.equal(env.mails.length, 0, 'no email address yet, so nothing is sent');
   assert.match(bookingRow(env, hold.bookingId)['Admin Notes'], /Waiting for the parent's details/);
@@ -765,6 +770,61 @@ test('email and phone are required: a booking without them is refused and nothin
   const p = details(1); delete p.email; delete p.phone;
   assert.equal(env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...p }).code, 'BAD_EMAIL');
   const row = bookingRow(env, hold.bookingId);
-  assert.deepEqual([row['Status'], row['Email'], row['Phone']], ['Awaiting Payment', '', '']);
+  assert.deepEqual([row['Status'], row['Parent Name'], row['Submitted At']], ['Awaiting Payment', '', '']);
   assert.equal(env.mails.length + env.alerts.length, 0);
+});
+
+test('email and phone are asked for before the QR: saved on the hold, and a hold without valid ones is refused', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0, email: ' divya@example.com ', phone: '+91 95913 00331' });
+  assert.equal(hold.ok, true);
+  let row = bookingRow(env, hold.bookingId);
+  assert.deepEqual([row['Status'], row['Email'], row['Phone']], ['Awaiting Payment', 'divya@example.com', '9591300331']);
+  const n = env.sheets.Bookings.data.length;
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0, email: '', phone: '9591300331' }).code, 'BAD_EMAIL');
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0, email: 'divya@example.com', phone: '' }).code, 'BAD_PHONE');
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0, email: 'divya@example.com', phone: '12345' }).code, 'BAD_PHONE');
+  assert.equal(env.sheets.Bookings.data.length, n, 'no hold was created');
+  // Changing the selection while paying keeps (or updates) the contact on the same row.
+  const edited = env.call({ action: 'createHold', slotId: 'S2', children: 2, giftQty: 0, email: 'divya.c@example.com', phone: '9591300331', previousBookingId: hold.bookingId });
+  assert.equal(edited.bookingId, hold.bookingId);
+  row = bookingRow(env, hold.bookingId);
+  assert.equal(row['Email'], 'divya.c@example.com');
+  assert.equal(env.mails.length + env.alerts.length, 0, 'no emails for a hold');
+});
+
+test('paid and marked Verified before the details: the confirmation goes out straight away, then the details are saved', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S3', children: 1, giftQty: 1, email: 'divya@example.com', phone: '9591300331' });
+  editStatus(env, hold.bookingId, 'Verified');
+  assert.equal(env.mails.length, 1);
+  assert.equal(env.mails[0].to, 'divya@example.com');
+  assert.match(env.mails[0].subject, /You're booked/);
+  assert.match(env.mails[0].htmlBody, /You're booked!/, 'no name yet, so no name in the greeting');
+  assert.doesNotMatch(env.mails[0].htmlBody, />Children</, 'no empty Children row');
+  assert.ok(env.mails[0].inlineImages.entryqr, 'with the entry QR');
+
+  const res = env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1, { email: 'divya@example.com', phone: '9591300331' }) });
+  assert.equal(res.status, 'Verified');
+  const row = bookingRow(env, hold.bookingId);
+  assert.deepEqual([row['Status'], row['Parent Name'], row['Child Names']], ['Verified', 'Meera Iyer', 'Kid 1']);
+  assert.ok(row['Submitted At']);
+  assert.equal(env.mails.length, 1, 'no second confirmation and no "payment being checked"');
+  assert.equal(env.alerts.length, 1);
+});
+
+test('a hold that never sent proof gets no "couldn\'t verify" email when rejected, even though it has an email', () => {
+  const env = load();
+  const a = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  editStatus(env, a.bookingId, 'Rejected');
+  const b = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  env.call({ action: 'adminReject', passcode: env.props.ADMIN_PASSCODE, bookingId: b.bookingId, reason: 'No payment' });
+  assert.equal(env.mails.length, 0);
+});
+
+test('a hold without contact is still accepted from a page loaded before the change', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0, email: undefined, phone: undefined });
+  assert.equal(hold.ok, true);
+  assert.equal(bookingRow(env, hold.bookingId)['Email'], '');
 });

@@ -87,12 +87,12 @@ Price and time copy is updated to ₹899 per ticket and the three slots. Every "
 
 ### 5.2 Booking flow
 
-1. **Choose & pay (one page):** pick a slot (sold-out slots disabled), the number of children, and add-ons. An itemized order summary updates live, with a photo consent tick (ticked by default; "photo consent" opens the details as a popup, or a bottom sheet on phones). Tapping **Pay ₹total** holds the places and shows the payment in the same summary card:
+1. **Choose & pay (one page):** pick a slot (sold-out slots disabled), the number of children, and add-ons, and fill in **Your contact: email and phone (10-digit Indian mobile, WhatsApp)**. Both are required before the QR appears and are saved with the hold, so a parent who pays and closes the page can still be confirmed or followed up. An itemized order summary updates live, with a photo consent tick (ticked by default; "photo consent" opens the details as a popup, or a bottom sheet on phones). Tapping **Pay ₹total** checks the slot, then the email and phone, then the consent, then holds the places and shows the payment in the same summary card:
    - A **UPI QR code** generated from the total and the UPI ID `ahilapil.26-1@okicici`, the booking ID, and a countdown for the 20-minute hold.
    - The UPI ID with a Copy button on its right, an "Open UPI app" button on phones, and a **Payment done** button.
    - Parents can still change the slot, children or add-ons while paying. The total, the hold and the QR update in place (same booking ID); the QR is blurred with "Updating your total…" until the new one is ready. If the change doesn't fit (not enough places), the QR is hidden, the message says why, and the earlier hold is kept until they tap Pay again.
    - The QR uses `upi://pay?pa=ahilapil.26-1@okicici&pn=Lil Hoppers&am=<total>.00&cu=INR&tn=<booking ID>`, so the booking ID appears in the payment note.
-2. **Details (ticket):** parent's name, email, phone (10-digit Indian mobile), each child's name, and proof of payment: the **payment screenshot**, which is required. There is no transaction-ID field: the screenshot is the only proof, so every booking gets the automatic date, time and payee check.
+2. **Details (ticket):** parent's name, each child's name, and proof of payment (email and phone were given on step 1 and are sent again with the details): the **payment screenshot**, which is required. There is no transaction-ID field: the screenshot is the only proof, so every booking gets the automatic date, time and payee check.
    - **Screenshot check.** As soon as a screenshot is chosen, the page reads its text and checks that it shows:
      1. the payee **AHILA PICHAIPILLAI** (or the UPI ID `ahilapil.26-1@okicici`), allowing for a couple of misread letters;
      2. **today's date**;

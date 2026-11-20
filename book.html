@@ -91,6 +91,15 @@
 </div>
 </fieldset>
 </div>
+
+<fieldset class="bk-card bk-contact" data-clarity-mask="true" data-hj-suppress data-cs-mask>
+<legend class="bk-legend">Your contact</legend>
+<div class="bk-fields">
+<div class="bk-field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required maxlength="120" placeholder="you@example.com"></div>
+<div class="bk-field"><label for="phone">Phone (WhatsApp)</label><div class="bk-phone"><span>+91</span><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" required placeholder="10-digit number"></div></div>
+</div>
+<p class="bk-muted bk-contact-note">Your confirmation and entry QR come here.</p>
+</fieldset>
 </div>
 
 <aside class="bk-card bk-summary" id="chooseCard" aria-labelledby="sumTitle">
@@ -141,8 +150,6 @@
 <h2 class="bk-h2">Your details</h2>
 <div class="bk-fields" data-clarity-mask="true" data-hj-suppress data-cs-mask>
 <div class="bk-field"><label for="parentName">Parent's name</label><input id="parentName" name="parentName" autocomplete="name" required maxlength="80" placeholder="Your full name"></div>
-<div class="bk-field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required maxlength="120" placeholder="you@example.com"><small>Your confirmation will come here.</small></div>
-<div class="bk-field"><label for="phone">Phone (WhatsApp)</label><div class="bk-phone"><span>+91</span><input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" required placeholder="10-digit number"></div></div>
 </div>
 <div class="bk-fields" id="childFields" data-clarity-mask="true" data-hj-suppress data-cs-mask></div>
 

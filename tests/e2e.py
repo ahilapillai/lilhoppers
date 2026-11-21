@@ -61,7 +61,7 @@ with sync_playwright() as p:
     check(page.locator('template').count() == 0, 'landing: all templates expanded')
     body = page.inner_text('body')
     check('₹899' in body and '₹799' not in body, 'landing: shows ₹899, no old ₹799')
-    check(page.inner_text('.lh-cta-stack').split('\n')[-1].strip() == 'Inclusive of all activities', 'landing: "Inclusive of all activities" under the hero Book button')
+    check(page.inner_text('.lh-cta-stack').split('\n')[-1].strip() == 'Inclusive of all activities, 2+ years onwards', 'landing: "Inclusive of all activities, 2+ years onwards" under the hero Book button')
     check('Inclusive of all event activities.' in body and '₹39' not in body and 'support fee' not in body, 'landing: "Inclusive of all event activities" under the price, no extra fee')
     check('Christmas Carnival' in body, 'landing: says Christmas Carnival')
     # ---------- SEO ----------
@@ -72,7 +72,7 @@ with sync_playwright() as p:
     check(page.evaluate('document.documentElement.lang') == 'en-IN', 'seo: page language en-IN')
     ld = json.loads(page.evaluate("document.querySelector('script[type=\"application/ld+json\"]').textContent"))
     ev = [g for g in ld['@graph'] if g['@type'] == 'Event'][0]
-    check(ev['startDate'] == '2026-12-12T14:00:00+05:30' and ev['location']['name'] == 'Vata Vriksha' and ev['offers']['price'] == '899' and ev['offers']['priceCurrency'] == 'INR', 'seo: Event structured data (date, venue, ₹899 ticket)')
+    check(ev['startDate'] == '2026-12-12T14:00:00+05:30' and ev['location']['name'] == 'Vata Vriksha' and ev['offers']['price'] == '899' and ev['offers']['priceCurrency'] == 'INR' and ev.get('typicalAgeRange') == '2-', 'seo: Event structured data (date, venue, ₹899 ticket, ages 2+)')
     low = body.lower()
     check('vata vriksha, indiranagar, bengaluru' in low and 'christmas activities for kids' in low and 'christmas carnival for kids in bengaluru' in low and '12 december 2026' in low, 'seo: page copy mentions Bengaluru, "Christmas activities for kids" and the year')
     check('transaction ID' not in body and 'Upload your payment screenshot.' in body, 'landing: "How booking works" asks for the screenshot only')

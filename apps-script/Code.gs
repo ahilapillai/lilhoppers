@@ -24,11 +24,10 @@ var CONFIG = {
   HOLD_MINUTES: 20,
   MAX_CHILDREN: 10,
   MAX_SCREENSHOT_BYTES: 5 * 1024 * 1024,
-  // BOOKING_FEE: a flat 'Booking & support fee' added once per booking (0 = none: the ticket price is all-inclusive).
-  // Keep in step with assets/js/config.js.
+  // BOOKING_FEE: the flat 'Booking & support fee' added once per booking. Keep in step with assets/js/config.js.
   // GROUP_DEALS: codes applied automatically by the number of children (the lowest price that applies wins).
   PRICES: {
-    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 0,
+    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
     GROUP_DEALS: [{ code: 'LILHOP5', minChildren: 5, childPrice: 749 }, { code: 'LILHOP2', minChildren: 2, childPrice: 799 }]
   },
   SCREENSHOT_FOLDER: 'Lil Hoppers – Payment screenshots',

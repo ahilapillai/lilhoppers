@@ -18,7 +18,7 @@
         });
       });
     }
-    const arcBulbs = [10, 171, 343, 514, 686, 857, 1029, 1190].map((x, i) => ({
+    const arcBulbs = [10, 200, 400, 600, 800, 1000, 1190].map((x, i) => ({
       left: (x / 1200 * 100).toFixed(3) + '%',
       top: (73.75 + 0.000625 * (x - 600) * (x - 600) + 3).toFixed(1) + 'px',
       color: colors[(i + 1) % colors.length],

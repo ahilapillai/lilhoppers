@@ -58,7 +58,16 @@ with sync_playwright() as p:
     page.goto(BASE + '/index.html')
     page.wait_for_timeout(2500)
     check(not errors, 'landing: no script errors ' + str(errors[:2]))
-    check(page.locator('.lh-bulb').count() == 18 + 18 + 8, 'landing: fairy lights rendered (%d)' % page.locator('.lh-bulb').count())
+    check(page.locator('.lh-bulb').count() == 18 + 18 + 7, 'landing: fairy lights rendered (%d)' % page.locator('.lh-bulb').count())
+    check('Tote bag' not in page.inner_text('body') and page.locator('.lh-arc > li').count() == 6 and page.locator('[aria-label="Party activities"] > a').count() == 6, 'landing: six activities, no tote bag printing')
+    check(page.inner_text('body').count('All activities included') == 2 and 'Seven stations' not in page.inner_text('body'), 'landing: "All activities included" instead of "Seven stations"')
+    # each activity circle sits on the arc line (same curve as the SVG path)
+    page.evaluate("document.getElementById('activities').scrollIntoView({behavior: 'instant'})"); page.wait_for_timeout(300)
+    off = page.evaluate('''() => { const line = document.querySelector('.lh-arc-line').getBoundingClientRect();
+      return [...document.querySelectorAll('.lh-arc > li > img')].map(im => { const r = im.getBoundingClientRect();
+        const t = (r.left + r.width / 2 - line.left) / line.width; const y = (1 - t) ** 2 * 298.75 + 2 * t * (1 - t) * -151.25 + t * t * 298.75;
+        return Math.round(r.top + r.height / 2 - line.top - y); }); }''')
+    check(all(abs(o) <= 6 for o in off), 'landing: activity circles sit on the arc (%s px off)' % off)
     n = page.locator('.lh-flake').count(); check(60 < n < 150, 'landing: snowflakes rendered, fewer than before (%d)' % n)
     check(page.locator('template').count() == 0, 'landing: all templates expanded')
     body = page.inner_text('body')

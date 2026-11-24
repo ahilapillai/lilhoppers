@@ -1,6 +1,6 @@
 /* Price maths shared by the booking page, admin page and demo backend. Must match apps-script/Code.gs. */
 (function (root) {
-  /** The group deal for this many children (LILHOP2 from 2, LILHOP5 from 5), or null. */
+  /** The group deal for this many children (LILHOP2: ₹699 each from 2 kids), or null. */
   function groupDeal(prices, children) {
     var best = null;
     (prices.GROUP_DEALS || []).forEach(function (d) {

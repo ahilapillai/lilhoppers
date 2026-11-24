@@ -7,8 +7,8 @@ window.LH_CONFIG = {
   // BOOKING_FEE: the flat 'Booking & support fee' added once per booking.
   // GROUP_DEALS: codes applied automatically by the number of children (the lowest price that applies wins).
   PRICES: {
-    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
-    GROUP_DEALS: [{ code: 'LILHOP5', minChildren: 5, childPrice: 749 }, { code: 'LILHOP2', minChildren: 2, childPrice: 799 }]
+    CHILD_TICKET: 799, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
+    GROUP_DEALS: [{ code: 'LILHOP2', minChildren: 2, childPrice: 699 }]
   },
   MAX_CHILDREN: 10,
   HOLD_MINUTES: 20,

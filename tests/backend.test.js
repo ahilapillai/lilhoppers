@@ -113,20 +113,20 @@ function bookingRow(env, id) {
 test('price examples from the PRD', () => {
   const { ctx } = load();
   // Every booking adds the flat ₹39 booking & support fee.
-  assert.equal(ctx.computeAmounts(1, false, 1).total, 1237);
-  assert.equal(ctx.computeAmounts(1, false, 0).total, 938);
-  assert.equal(ctx.computeAmounts(1, true, 1).total, 1436);
-  // Group deals apply by themselves: LILHOP2 (₹799 each) from 2 kids, LILHOP5 (₹749 each) from 5.
+  assert.equal(ctx.computeAmounts(1, false, 1).total, 1137);
+  assert.equal(ctx.computeAmounts(1, false, 0).total, 838);
+  assert.equal(ctx.computeAmounts(1, true, 1).total, 1336);
+  // The group deal applies by itself: LILHOP2, ₹699 each from 2 kids (₹799 for one).
   const three = ctx.computeAmounts(3, true, 2);
-  assert.deepEqual([three.ticketsAtFull, three.discount, three.ticketSubtotal, three.extraParentCharge, three.giftSubtotal, three.bookingFee, three.total], [2697, 300, 2397, 199, 598, 39, 3233]);
+  assert.deepEqual([three.ticketsAtFull, three.discount, three.ticketSubtotal, three.extraParentCharge, three.giftSubtotal, three.bookingFee, three.total], [2397, 300, 2097, 199, 598, 39, 2933]);
   const deal = (n) => { const a = ctx.computeAmounts(n, false, 0); return [a.childPrice, a.couponCode, a.discount]; };
-  assert.deepEqual(deal(1), [899, '', 0]);
-  assert.deepEqual(deal(2), [799, 'LILHOP2', 200]);
-  assert.deepEqual(deal(4), [799, 'LILHOP2', 400]);
-  assert.deepEqual(deal(5), [749, 'LILHOP5', 750]);
-  assert.deepEqual(deal(10), [749, 'LILHOP5', 1500]);
-  assert.equal(ctx.computeAmounts(2, false, 0).total, 2 * 799 + 39);
-  assert.equal(ctx.computeAmounts(5, true, 5).total, 5 * 749 + 199 + 5 * 299 + 39);
+  assert.deepEqual(deal(1), [799, '', 0]);
+  assert.deepEqual(deal(2), [699, 'LILHOP2', 200]);
+  assert.deepEqual(deal(4), [699, 'LILHOP2', 400]);
+  assert.deepEqual(deal(5), [699, 'LILHOP2', 500]);
+  assert.deepEqual(deal(10), [699, 'LILHOP2', 1000]);
+  assert.equal(ctx.computeAmounts(2, false, 0).total, 2 * 699 + 39);
+  assert.equal(ctx.computeAmounts(5, true, 5).total, 5 * 699 + 199 + 5 * 299 + 39);
 });
 
 test('setup creates slots 32 / 33 / 35 = 100 and an admin passcode', () => {
@@ -149,12 +149,12 @@ test('server computes the amount and the UPI link, ignoring anything the browser
   const env = load();
   const res = env.call({ action: 'createHold', slotId: 'S1', children: 1, extraParent: true, giftQty: 1, total: 5 });
   assert.equal(res.ok, true);
-  assert.equal(res.amounts.total, 1436);
+  assert.equal(res.amounts.total, 1336);
   assert.equal(res.amounts.bookingFee, 39);
-  assert.match(res.upi.uri, /^upi:\/\/pay\?pa=ahilapil\.26-1@okicici&pn=Lil%20Hoppers&am=1436\.00&cu=INR&tn=LH-/);
+  assert.match(res.upi.uri, /^upi:\/\/pay\?pa=ahilapil\.26-1@okicici&pn=Lil%20Hoppers&am=1336\.00&cu=INR&tn=LH-/);
   const row = bookingRow(env, res.bookingId);
   assert.equal(row['Status'], 'Awaiting Payment');
-  assert.equal(row['Expected Total'], 1436);
+  assert.equal(row['Expected Total'], 1336);
   assert.equal(row['Extra Parent'], 'Yes');
   assert.equal(row['Santa Gift Qty'], 1);
 });
@@ -217,7 +217,7 @@ test('changing the selection releases the previous hold', () => {
   assert.equal(second.ok, true);
   assert.equal(second.bookingId, first.bookingId, 'editing keeps the same booking');
   const row = bookingRow(env, first.bookingId);
-  assert.deepEqual([row['Status'], row['Children'], row['Expected Total']], ['Awaiting Payment', 1, 1237]);
+  assert.deepEqual([row['Status'], row['Children'], row['Expected Total']], ['Awaiting Payment', 1, 1137]);
   assert.equal(env.sheets.Bookings.data.filter((r) => r[0] === first.bookingId).length, 1, 'no extra row');
 });
 
@@ -229,7 +229,7 @@ test('editing a hold counts its own places only once, and a change that does not
   // Same 3 places, now with gifts: fits, because its own places aren't counted twice.
   const edited = env.call({ action: 'createHold', slotId: 'S1', children: 3, giftQty: 3, previousBookingId: mine.bookingId });
   assert.equal(edited.ok, true);
-  assert.equal(edited.amounts.total, 3 * 799 + 3 * 299 + 39);
+  assert.equal(edited.amounts.total, 3 * 699 + 3 * 299 + 39);
   // 4 children won't fit: refused, and the 3-child hold is still there.
   const tooMany = env.call({ action: 'createHold', slotId: 'S1', children: 4, giftQty: 0, previousBookingId: mine.bookingId });
   assert.equal(tooMany.code, 'NOT_ENOUGH_PLACES');
@@ -275,9 +275,9 @@ test('submitting proof: saves details, screenshot to Drive, sets Pending, sends 
   assert.match(env.mails[0].subject, /payment being checked/);
   assert.match(env.mails[0].htmlBody, /not confirmed yet/);
   assert.match(env.mails[0].htmlBody, /Booking &amp; support fee<\/td><td[^>]*>₹39/);
-  assert.match(env.mails[0].htmlBody, /Code LILHOP2 applied \(₹799 per child\)/);
+  assert.match(env.mails[0].htmlBody, /Code LILHOP2 applied \(₹699 per child\)/);
   assert.match(env.mails[0].htmlBody, /−₹200/);
-  assert.match(env.mails[0].htmlBody, /₹1,936/);
+  assert.match(env.mails[0].htmlBody, /₹1,736/);
 });
 
 test('screenshot check result is saved to the sheet and shown to admin; a failed check is refused', () => {
@@ -387,7 +387,7 @@ test('admin list carries the itemized payment breakdown for every booking', () =
   const b = env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE }).bookings[0];
   assert.deepEqual(
     [b.ticketSubtotal, b.extraParentCharge, b.giftQty, b.giftSubtotal, b.expectedTotal, b.verifiedAmount],
-    [2397, 199, 2, 598, 3233, '']
+    [2097, 199, 2, 598, 2933, '']
   );
 });
 
@@ -494,7 +494,7 @@ test('setting Status to Verified in the sheet sends the confirmation email once'
   assert.equal(env.mails[1].to, 'meera@example.com');
   const row = bookingRow(env, hold.bookingId);
   assert.equal(row['Payment Status'], 'Verified');
-  assert.equal(row['Verified Amount'], 1237);
+  assert.equal(row['Verified Amount'], 1137);
   assert.ok(row['Verified At'] && typeof row['Verified At'].getTime === 'function');
   assert.ok(row['Confirmation Email Sent At'] && typeof row['Confirmation Email Sent At'].getTime === 'function');
   editStatus(env, hold.bookingId, 'Verified');
@@ -656,7 +656,8 @@ test('bookings made before the booking & support fee keep their old totals in em
   const env = load();
   const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 1 });
   const sh = env.sheets.Bookings.data;
-  sh.find((r) => r[0] === hold.bookingId)[sh[0].indexOf('Expected Total')] = 1198; // saved before the fee existed
+  const row = sh.find((r) => r[0] === hold.bookingId);
+  row[sh[0].indexOf('Ticket Subtotal')] = 899; row[sh[0].indexOf('Expected Total')] = 1198; // saved at ₹899, before the fee existed
   env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(1) });
   const body = env.mails[0].htmlBody;
   assert.match(body, /₹1,198/);
@@ -683,7 +684,7 @@ test('every booking submitted sends Lil\' Hoppers a "new booking" alert, once', 
   assert.equal(env.alerts.length, 1);
   const m = env.alerts[0];
   assert.equal(m.to, 'hello.lilhoppers@gmail.com');
-  assert.equal(m.subject, 'New booking ' + hold.bookingId + ' · 4:00 PM – 5:30 PM · 2 kids · ₹2,135');
+  assert.equal(m.subject, 'New booking ' + hold.bookingId + ' · 4:00 PM – 5:30 PM · 2 kids · ₹1,935');
   assert.match(m.htmlBody, /Meera Iyer/);
   assert.match(m.htmlBody, /https:\/\/wa\.me\/919845012345/);
   assert.match(m.htmlBody, /Kid 1, Kid 2/);
@@ -817,4 +818,16 @@ test('a hold without contact is still accepted from a page loaded before the cha
   const hold = env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0, email: undefined, phone: undefined });
   assert.equal(hold.ok, true);
   assert.equal(bookingRow(env, hold.bookingId)['Email'], '');
+});
+
+test('a booking saved at the old ₹899 / LILHOP2 ₹799 prices keeps its amounts after the price change', () => {
+  const env = load();
+  const hold = env.call({ action: 'createHold', slotId: 'S2', children: 2, giftQty: 0 });
+  const sh = env.sheets.Bookings.data, H = sh[0], row = sh.find((r) => r[0] === hold.bookingId);
+  row[H.indexOf('Ticket Subtotal')] = 1598; row[H.indexOf('Expected Total')] = 1637; // 2 × ₹799 + ₹39, booked before
+  env.call({ action: 'submitBooking', bookingId: hold.bookingId, ...details(2) });
+  const body = env.mails[0].htmlBody;
+  assert.match(body, /2 kids \+ 2 parents<\/td><td[^>]*>₹1,598/);
+  assert.match(body, /Booking &amp; support fee<\/td><td[^>]*>₹39/);
+  assert.match(body, /<strong>₹1,637<\/strong>/);
 });

@@ -48,28 +48,27 @@ Rules:
 
 | Item | Price | Rules |
 |---|---|---|
-| Child ticket | ₹899 per child | Includes entry for one parent. At least 1, at most 10 per booking. |
+| Child ticket | ₹799 per child (was ₹899 until 24 Nov 2026) | Includes entry for one parent. At least 1, at most 10 per booking. |
 | Extra Parent | ₹199 | Optional. **Unchecked** by default. Maximum one per booking. |
 | Personalised Gift from Santa | ₹299 per child | Labelled **"Optional"**. **Unchecked** by default. Parents tick it to add it. With more than one child, the parent picks the gift quantity from 1 up to the number of children (default: one per child). |
 | Booking & support fee | ₹39 per booking | **Always added**, once per booking (not per child). Shown as its own line in the order summary from the start, next to the ticket price on the homepage ("Inclusive of all event activities, plus a ₹39 booking & support fee per booking."), and in the emails. Bookings made before the fee keep their original totals. |
-| Group deal **LILHOP2** | ₹799 per child | **Applied automatically** when booking 2–4 children (no code to type). Child tickets only. |
-| Group deal **LILHOP5** | ₹749 per child | **Applied automatically** when booking 5 or more children. Child tickets only. |
+| Group deal **LILHOP2** | ₹699 per child | **Applied automatically** when booking 2 or more children (no code to type). Child tickets only. (Until 24 Nov 2026: LILHOP2 ₹799 from 2 kids and LILHOP5 ₹749 from 5; bookings made then keep their amounts.) |
 
 - The price is shown beside every add-on.
 - The total recalculates immediately whenever the number of children or any add-on changes.
 - The server recalculates every amount itself and never trusts the amount sent by the browser.
 
-How the deals show on the booking page: under "N kids + N parents" (e.g. "LILHOP2 applied: ₹799 per child · 5+ kids for ₹749 each", or "Book 2+ kids for ₹799 each (LILHOP2)" for one child), and in the order summary as a green line just above the total ("Code LILHOP2 auto-applied −₹300"), with the tickets shown at full price above it. Emails show the same line. Bookings saved before a price change keep their saved amounts.
+How the deals show on the booking page: under "N kids + N parents" (e.g. "LILHOP2 applied: ₹699 per child", or "Book 2+ kids for ₹699 each (LILHOP2)" for one child), and in the order summary as a green line just above the total ("Code LILHOP2 auto-applied −₹300"), with the tickets shown at full price above it. Emails show the same line. Bookings saved before a price change keep their saved amounts.
 
 Price checks (must always hold):
 
 | Booking | Total |
 |---|---|
-| 1 child, no add-ons (default) | ₹899 + ₹39 fee = ₹938 |
-| 1 child + Santa gift | ₹1,237 |
-| 1 child + Santa gift + extra parent | ₹1,436 |
-| 2 children (LILHOP2) | 2 × ₹799 + ₹39 = ₹1,637 |
-| 5 children (LILHOP5) | 5 × ₹749 + ₹39 = ₹3,784 |
+| 1 child, no add-ons (default) | ₹799 + ₹39 fee = ₹838 |
+| 1 child + Santa gift | ₹1,137 |
+| 1 child + Santa gift + extra parent | ₹1,336 |
+| 2 children (LILHOP2) | 2 × ₹699 + ₹39 = ₹1,437 |
+| 5 children (LILHOP2) | 5 × ₹699 + ₹39 = ₹3,534 |
 
 ## 5. Customer journey
 
@@ -83,7 +82,7 @@ Dark purple-to-black background with very slow falling snow and twinkling fairy 
 - **Tickets and how booking works.** The When box shows the date and "From 2:00 PM onwards, 3 slots".
 - **Footer:** "Call or WhatsApp +91 96864 53295" (tap to call) and an Instagram button linking to instagram.com/lil.hoppers.
 
-Price and time copy is updated to ₹899 per ticket and the three slots. Every "Book tickets" button opens the booking flow (header, hero and tickets section).
+Price and time copy is updated to ₹799 per ticket and the three slots. Every "Book tickets" button opens the booking flow (header, hero and tickets section).
 
 ### 5.2 Booking flow
 
@@ -144,7 +143,7 @@ The admin page is protected by a passcode stored on the server. It shows:
 
 - **Slots:** capacity (editable), verified children, pending children, active holds, total counted, and whether the slot is sold out. Also the overall total against the overall capacity (100).
 - **Bookings:** every booking with an itemized breakdown:
-  - Ticket subtotal (children × ₹899)
+  - Ticket subtotal (children × the ticket price, after any group deal)
   - Extra parent charge
   - Santa gift quantity and subtotal
   - **Total expected**

@@ -72,3 +72,5 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 node --test tests/*.test.js  # backend logic (pricing, capacity, holds, emails, admin) and the screenshot reader rules
 python3 tests/e2e.py         # browser tests of every page in demo mode, including real OCR on sample screenshots and a fake camera scanning the entry QR (needs Playwright, Chrome and ffmpeg)
 ```
+
+

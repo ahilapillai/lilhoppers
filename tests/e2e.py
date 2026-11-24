@@ -311,7 +311,7 @@ with sync_playwright() as p:
     check('Wrong passcode' in adm.inner_text('#loginError'), 'admin: wrong passcode refused')
     adm.fill('#passcode', 'demo'); adm.click('#login button')
     adm.wait_for_selector('#dash:not([hidden])')
-    check('of 100' in adm.inner_text('#totals'), 'admin: overall capacity is 100')
+    check('of 120' in adm.inner_text('#totals'), 'admin: overall capacity is 120 (40 kids per slot)')
     s2 = adm.locator('.ad-slot >> nth=1').inner_text()
     check('Pending\n3' in s2 or 'PENDING\n3' in s2.upper(), 'admin: slot 2 shows 3 pending children')
     row = adm.locator('#rows tr >> nth=0').inner_text()
@@ -339,7 +339,7 @@ with sync_playwright() as p:
     if bk.locator('#step-done:not([hidden])').count(): bk.click('#bookAnother')
     bk.wait_for_selector('.bk-slot.is-sold')
     check(bk.locator('.bk-slot.is-sold input').is_disabled() and 'sold out' in bk.inner_text('.bk-slot.is-sold').lower(), 'book: sold-out slot shows "Sold Out" and is disabled')
-    check(not re.search(r'\b(32|33|35|remaining|left:)\b', bk.inner_text('#slotList')), 'book: no counts or capacity shown')
+    check(not re.search(r'\b(40|remaining|left:)\b', bk.inner_text('#slotList')), 'book: no counts or capacity shown')
     bk.screenshot(path=f'{OUT}/book-soldout.png', full_page=True)
     browser.close()
 

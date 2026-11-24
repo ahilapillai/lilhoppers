@@ -1,6 +1,7 @@
 /* Analytics for the homepage and booking page (never the admin or door check-in pages).
    - Google Analytics 4 counts visits and every booking step, so drop-off shows up as a funnel.
    - Session recordings: Microsoft Clarity, Hotjar or Contentsquare, whichever has an ID in config.js.
+   - Meta Pixel: the same booking steps as Meta standard events, so Facebook/Instagram ads can count bookings.
    Nothing loads until an ID is filled in (LH_CONFIG.ANALYTICS). Events carry only step names, counts and
    amounts, never names, email, phone or the screenshot, and those parts of the page are masked in recordings.
    Your own browser is left out once you've opened the admin or check-in page (or visited any page with
@@ -16,7 +17,7 @@
   if (q === '0') store(function (s) { s.removeItem(NOTRACK); });
   var off = store(function (s) { return s.getItem(NOTRACK) === '1'; }) === true;
 
-  var on = { ga: !off && !!A.GA4_ID, clarity: !off && !!A.CLARITY_ID, hotjar: !off && !!A.HOTJAR_ID, cs: !off && !!A.CONTENTSQUARE_ID };
+  var on = { ga: !off && !!A.GA4_ID, clarity: !off && !!A.CLARITY_ID, hotjar: !off && !!A.HOTJAR_ID, cs: !off && !!A.CONTENTSQUARE_ID, meta: !off && !!A.META_PIXEL_ID };
 
   function addScript(src) {
     var s = d.createElement('script'); s.async = true; s.src = src;
@@ -43,6 +44,47 @@
     w._uxa = w._uxa || [];
     addScript('https://t.contentsquare.net/uxa/' + encodeURIComponent(A.CONTENTSQUARE_ID) + '.js');
   }
+  if (on.meta) {
+    // Meta's standard Pixel loader: calls wait in fbq.queue until fbevents.js arrives.
+    if (!w.fbq) {
+      var n = w.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+      if (!w._fbq) w._fbq = n;
+      n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
+    }
+    var pid = String(A.META_PIXEL_ID);
+    // No automatic configuration: the Pixel sends only the events below, never button text or form fields.
+    w.fbq('set', 'autoConfig', false, pid);
+    w.fbq('init', pid);
+    w.fbq('track', 'PageView');
+    addScript('https://connect.facebook.net/en_US/fbevents.js');
+  }
+
+  /* Booking steps as Meta standard events (the same moments as the GA4 events of the same meaning). */
+  var META_EVENTS = {
+    view_item: 'ViewContent', add_to_cart: 'AddToCart', begin_checkout: 'InitiateCheckout',
+    add_payment_info: 'AddPaymentInfo', purchase: 'Purchase', contact_click: 'Contact', directions_click: 'FindLocation'
+  };
+  function metaParams(p) {
+    p = p || {};
+    var out = {};
+    if (typeof p.value === 'number') { out.value = p.value; out.currency = p.currency || 'INR'; }
+    if (p.items && p.items.length) {
+      out.content_type = 'product';
+      out.content_ids = p.items.map(function (i) { return i.item_id; });
+      out.contents = p.items.map(function (i) { return { id: i.item_id, quantity: i.quantity, item_price: i.price }; });
+      out.num_items = p.items[0].item_id === 'ticket' ? p.items[0].quantity : 0;
+    }
+    return out;
+  }
+  function metaTrack(name, params) {
+    if (META_EVENTS[name]) {
+      // The booking ID as event ID, so a later server-side (Conversions API) copy of the same booking isn't counted twice.
+      if (name === 'purchase' && params && params.transaction_id) w.fbq('track', 'Purchase', metaParams(params), { eventID: String(params.transaction_id) });
+      else w.fbq('track', META_EVENTS[name], metaParams(params));
+    } else if (name === 'book_click') {
+      w.fbq('trackCustom', 'BookTicketsClick', { cta_location: (params && params.cta_location) || 'link' });
+    }
+  }
 
   /* track(name, params): sends the event to Google Analytics, and marks the recording with the same name
      so you can filter recordings by it (e.g. "begin_checkout but no purchase"). */
@@ -52,6 +94,7 @@
       if (on.clarity) w.clarity('event', name);
       if (on.hotjar) w.hj('event', name);
       if (on.cs) w._uxa.push(['trackPageEvent', name]);
+      if (on.meta) metaTrack(name, params);
     } catch (e) { /* analytics must never break the page */ }
   }
   var sent = {};
@@ -102,5 +145,5 @@
   }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', watchSections); else watchSections();
 
-  w.LH_TRACK = { track: track, once: once, tag: tag, order: order, enabled: on.ga || on.clarity || on.hotjar || on.cs };
+  w.LH_TRACK = { track: track, once: once, tag: tag, order: order, enabled: on.ga || on.clarity || on.hotjar || on.cs || on.meta };
 })();

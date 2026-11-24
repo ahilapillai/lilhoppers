@@ -19,7 +19,9 @@ class Quiet(http.server.SimpleHTTPRequestHandler):
             src = open(os.path.join(ROOT, 'assets', 'js', 'config.js'), encoding='utf-8').read()
             # The analytics tests switch on test IDs with a cookie (the scripts themselves can't load offline).
             if 'lh_analytics_test=1' in (self.headers.get('Cookie') or ''):
-                src = re.sub(r"ANALYTICS:\s*\{[^}]*\}", "ANALYTICS: { GA4_ID: 'G-TEST123', CLARITY_ID: 'clartest1', HOTJAR_ID: '', CONTENTSQUARE_ID: '' }", src)
+                src = re.sub(r"ANALYTICS:\s*\{[^}]*\}", "ANALYTICS: { GA4_ID: 'G-TEST123', CLARITY_ID: 'clartest1', HOTJAR_ID: '', CONTENTSQUARE_ID: '', META_PIXEL_ID: '123456789012345' }", src)
+            else:
+                src = re.sub(r"META_PIXEL_ID:\s*'[^']*'", "META_PIXEL_ID: ''", src)  # demo mode: the live Pixel stays off in other tests
             body = re.sub(r"API_URL:\s*'[^']*'", "API_URL: ''", src).encode('utf-8')
             self.send_response(200); self.send_header('Content-Type', 'application/javascript'); self.send_header('Content-Length', str(len(body))); self.end_headers()
             self.wfile.write(body); return
@@ -431,6 +433,8 @@ with sync_playwright() as p:
     ab = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader',
         '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'])
     an = ab.new_context(viewport={'width': 1280, 'height': 900})
+    # Keep third-party scripts from loading (a proxy can bypass the resolver rules), so their queues stay readable.
+    an.route(re.compile(r'^https?://(?!127\.0\.0\.1[:/])'), lambda route: route.abort())
     an.add_cookies([{'name': 'lh_analytics_test', 'value': '1', 'url': BASE}])
     a = an.new_page(); aerrors = []
     a.on('pageerror', lambda e: aerrors.append(str(e)))
@@ -439,6 +443,9 @@ with sync_playwright() as p:
     cfgd = a.evaluate("() => (window.dataLayer || []).map(x => Array.from(x)).filter(x => x[0] === 'config').map(x => x[1])")
     check(cfgd == ['G-TEST123'], 'analytics: GA4 starts with the measurement ID from config.js (%s)' % cfgd)
     check(a.locator('script[src*="googletagmanager.com/gtag/js?id=G-TEST123"]').count() == 1 and a.locator('script[src*="clarity.ms/tag/clartest1"]').count() == 1, 'analytics: GA4 and Clarity scripts are added')
+    fq = lambda: a.evaluate("() => (window.fbq && window.fbq.queue || []).map(x => Array.from(x))")
+    check(a.locator('script[src*="connect.facebook.net/en_US/fbevents.js"]').count() == 1 and fq()[:3] == [['set', 'autoConfig', False, '123456789012345'], ['init', '123456789012345'], ['track', 'PageView']],
+          'analytics: the Meta Pixel starts with the ID from config.js, automatic configuration off, and a PageView (%s)' % fq()[:3])
     a.evaluate("document.getElementById('tickets').scrollIntoView()")  # smooth scrolling: wait until it gets there
     try: a.wait_for_function("() => dataLayer.some(x => x[1] === 'section_view')", timeout=8000)
     except Exception: pass
@@ -447,6 +454,7 @@ with sync_playwright() as p:
     a.evaluate("window.addEventListener('click', e => e.preventDefault(), true)")  # stay on the page to read the click event
     a.click('a[data-cta="tickets"]')
     check([e[2]['cta_location'] for e in events() if e[1] == 'book_click'] == ['tickets'], 'analytics: "Book tickets" clicks say which button was used')
+    check(['trackCustom', 'BookTicketsClick', {'cta_location': 'tickets'}] in fq(), 'analytics: "Book tickets" clicks reach the Meta Pixel too')
     a.close()
 
     a = an.new_page(); a.on('pageerror', lambda e: aerrors.append(str(e)))
@@ -468,7 +476,13 @@ with sync_playwright() as p:
     check(buy.get('value') == 1637 and buy.get('currency') == 'INR' and buy.get('coupon') == 'LILHOP2' and str(buy.get('transaction_id', '')).startswith('LH-'), 'analytics: purchase carries the booking ID, ₹1,637 and the LILHOP2 code (%s)' % {k: buy.get(k) for k in ('value', 'coupon', 'transaction_id')})
     check(sum(i['price'] * i['quantity'] for i in buy.get('items', [])) == 1637, 'analytics: purchase items add up to the total')
     check([e[2] for e in ev if e[1] == 'booking_error'][:1] == [{'step': 'details', 'reason': 'parentName'}], 'analytics: a form problem is recorded with the field that stopped them')
-    dump = json.dumps(a.evaluate("() => (window.dataLayer || []).map(x => Array.from(x))"), ensure_ascii=False, default=str) + json.dumps(a.evaluate('() => window.clarity.q.map(x => Array.from(x))'), default=str)
+    mq = fq(); mnames = [x[1] for x in mq if x[0] == 'track']
+    it = iter(mnames)
+    check(all(n in it for n in ['PageView', 'ViewContent', 'AddToCart', 'InitiateCheckout', 'AddPaymentInfo', 'Purchase']), 'analytics: the Meta Pixel gets the booking steps in order (%s)' % mnames)
+    mbuy = ([x for x in mq if x[0] == 'track' and x[1] == 'Purchase'] or [['track', 'Purchase', {}, {}]])[0] + [{}, {}]
+    check(mbuy[2].get('value') == 1637 and mbuy[2].get('currency') == 'INR' and mbuy[2].get('num_items') == 2 and str(mbuy[3].get('eventID', '')).startswith('LH-'),
+          'analytics: Meta Purchase carries ₹1,637 in INR, 2 tickets and the booking ID as event ID (%s)' % mbuy[2:4])
+    dump = json.dumps(a.evaluate("() => (window.dataLayer || []).map(x => Array.from(x))"), ensure_ascii=False, default=str) + json.dumps(a.evaluate('() => window.clarity.q.map(x => Array.from(x))'), default=str) + json.dumps(mq, ensure_ascii=False, default=str)
     check(not any(x in dump for x in ['Meera', 'meera@', '98450', 'Aarav', 'Diya']), 'analytics: no names, email or phone are sent')
     check(not any('meera' in json.dumps(e, default=str) for e in ev if e[1] == 'begin_checkout'), 'analytics: the hold event carries no contact details')
     cq = a.evaluate('() => window.clarity.q.map(x => Array.from(x))')
@@ -478,9 +492,9 @@ with sync_playwright() as p:
     check(all(masked), 'analytics: details, screenshot and ticket details are masked in recordings %s' % masked)
 
     a.goto(BASE + '/admin.html'); a.goto(BASE + '/book.html'); a.wait_for_timeout(800)
-    check(a.evaluate('typeof window.gtag') == 'undefined' and a.locator('script[src*="clarity.ms"]').count() == 0, 'analytics: once the admin page is opened, that browser is left out')
+    check(a.evaluate('typeof window.gtag') == 'undefined' and a.evaluate('typeof window.fbq') == 'undefined' and a.locator('script[src*="clarity.ms"], script[src*="connect.facebook.net"]').count() == 0, 'analytics: once the admin page is opened, that browser is left out')
     a.goto(BASE + '/book.html?notrack=0'); a.wait_for_timeout(800)
-    check(a.evaluate('typeof window.gtag') == 'function', 'analytics: ?notrack=0 counts that browser again')
+    check(a.evaluate('typeof window.gtag') == 'function' and a.evaluate('typeof window.fbq') == 'function', 'analytics: ?notrack=0 counts that browser again')
     check(not aerrors, 'analytics: no script errors ' + str(aerrors[:2]))
     an.close()
 
@@ -505,7 +519,7 @@ with sync_playwright() as p:
 
     # with no IDs in config.js nothing loads
     q = ab.new_page(); q.goto(BASE + '/book.html'); q.wait_for_selector('.bk-slot')
-    check(q.evaluate('typeof window.gtag') == 'undefined' and q.locator('script[src*="clarity.ms"], script[src*="hotjar"], script[src*="contentsquare"]').count() == 0, 'analytics: nothing loads while the IDs are empty')
+    check(q.evaluate('typeof window.gtag') == 'undefined' and q.evaluate('typeof window.fbq') == 'undefined' and q.locator('script[src*="clarity.ms"], script[src*="hotjar"], script[src*="contentsquare"], script[src*="connect.facebook.net"]').count() == 0, 'analytics: nothing loads while the IDs are empty')
     q.close(); ab.close()
 
 httpd.shutdown()

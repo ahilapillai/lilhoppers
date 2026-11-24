@@ -39,10 +39,11 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 
 1. **Google Analytics:** at [analytics.google.com](https://analytics.google.com), signed in as hello.lilhoppers@gmail.com, create an account and a property ("Lil' Hoppers", India, INR), then a **Web** data stream for `https://lilhoppers.co`. Copy its **Measurement ID** (`G-…`).
 2. **Recordings:** create a free project at [clarity.microsoft.com](https://clarity.microsoft.com) for `https://lilhoppers.co` and copy the **project ID** from **Settings → Overview** (or the ID in the tracking code). Clarity records every visit. Hotjar or Contentsquare work too (`HOTJAR_ID` / `CONTENTSQUARE_ID`), but new Hotjar sign-ups now get Contentsquare's free plan, which records only about 5% of visits.
-3. Paste the IDs into `assets/js/config.js` under `ANALYTICS` and commit.
-4. **Watch the drop-off:** in GA4, **Reports → Monetization → Purchase journey** (or **Explore → Funnel exploration**: `view_item → add_to_cart → begin_checkout → add_payment_info → purchase`). In Clarity, filter recordings by the same event names. Every event is listed in `docs/PRD.md` section 9a.
-5. **Your own visits** aren't counted once you've opened the admin page on that browser. To see yourself in a recording (to test), open `https://lilhoppers.co/?notrack=0`.
-6. **Search:** add `https://lilhoppers.co` to [Google Search Console](https://search.google.com/search-console) (the Analytics tag can verify it) and submit `https://lilhoppers.co/sitemap.xml`.
+3. **Meta Pixel (Facebook/Instagram ads):** `META_PIXEL_ID` is the Lil Hoppers ad account's dataset (`658855029194081`, listed in **Events Manager → Data sources**; it was created as "Halloween" and can be renamed there). It sends the booking steps as Meta standard events: `PageView`, `ViewContent` → `AddToCart` → `InitiateCheckout` → `AddPaymentInfo` → `Purchase` (with the booking ID, total and INR), plus `Contact`, `FindLocation` and a custom `BookTicketsClick`. To see bookings against an ad, tick **Tracking → Website events** on the ad in Ads Manager and pick this dataset. Check it's firing with **Events Manager → Test events** or the Meta Pixel Helper extension.
+4. Paste the IDs into `assets/js/config.js` under `ANALYTICS` and commit.
+5. **Watch the drop-off:** in GA4, **Reports → Monetization → Purchase journey** (or **Explore → Funnel exploration**: `view_item → add_to_cart → begin_checkout → add_payment_info → purchase`). In Clarity, filter recordings by the same event names. Every event is listed in `docs/PRD.md` section 9a.
+6. **Your own visits** aren't counted once you've opened the admin page on that browser. To see yourself in a recording (to test), open `https://lilhoppers.co/?notrack=0`.
+7. **Search:** add `https://lilhoppers.co` to [Google Search Console](https://search.google.com/search-console) (the Analytics tag can verify it) and submit `https://lilhoppers.co/sitemap.xml`.
 
 ## How it works
 

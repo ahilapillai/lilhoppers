@@ -21,7 +21,8 @@ window.LH_CONFIG = {
   //   CLARITY_ID: Microsoft Clarity project ID, e.g. 'abcd1234ef' (Settings → Overview). Free; records every visit.
   //   HOTJAR_ID: Hotjar site ID (numbers only), for an existing Hotjar account.
   //   CONTENTSQUARE_ID: Contentsquare tag ID (what new Hotjar sign-ups get), from the tag 't.contentsquare.net/uxa/<ID>.js'.
-  ANALYTICS: { GA4_ID: '', CLARITY_ID: '', HOTJAR_ID: '', CONTENTSQUARE_ID: '' },
+  //   META_PIXEL_ID: Meta Pixel (dataset) ID for Facebook/Instagram ads (Events Manager → Data sources), numbers only.
+  ANALYTICS: { GA4_ID: '', CLARITY_ID: '', HOTJAR_ID: '', CONTENTSQUARE_ID: '', META_PIXEL_ID: '658855029194081' },
   // Payment screenshots must show one of these names (or the UPI ID), today's date, and a time within this many minutes of upload.
   PAYEE_NAMES: ['AHILA PICHAIPILLAI'],
   SCREENSHOT_TOLERANCE_MINUTES: 15

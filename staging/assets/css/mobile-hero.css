@@ -5,10 +5,9 @@
 .sh-hero, .sh-bar { display: none; }
 
 @media (max-width: 720px) {
-  .lh-desk-only { display: none !important; }
-  /* The old page gradient started purple at the hidden hero; continue from the new hero's dark base instead. */
-  #top { background: linear-gradient(180deg, #1A102F 0%, #120B24 45%, #08050F 80%, #000000 100%) !important; }
-  body { padding-bottom: calc(89px + env(safe-area-inset-bottom)); background: #000; }
+  /* Keep it simple: on phones the new screen and the Sign Up bar are the whole page. */
+  .lh-desk-only, #top { display: none !important; }
+  body { padding-bottom: calc(89px + env(safe-area-inset-bottom)); background: #1A102F; }
 
   .sh-hero {
     display: flex; flex-direction: column;
@@ -30,7 +29,11 @@
   }
   .sh-hero h1 span { display: block; color: #F6897D; letter-spacing: -0.005em; }
 
-  .sh-prices { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; width: calc(100% - 64px); max-width: 330px; margin: 7px auto 0; }
+  /* Date and place, and the booking fee, so parents have them before Sign Up. */
+  .sh-when { margin: 6px 0 0; font-size: 15px; font-weight: 700; line-height: 1.3; color: #D2C8E6; letter-spacing: 0.01em; }
+  .sh-fee { margin: 9px 0 0; font-size: 13px; font-weight: 700; line-height: 1.3; color: #D2C8E6; }
+
+  .sh-prices { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; width: calc(100% - 64px); max-width: 330px; margin: 14px auto 0; }
   .sh-price {
     min-height: 107px; box-sizing: border-box; padding: 15px 16px 8px; border-radius: 16px; text-align: left;
     background: rgba(255, 255, 255, 0.1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); color: #FFFFFF;
@@ -41,13 +44,13 @@
   .sh-price.is-deal { background: #FCD419; box-shadow: none; color: #1A1408; }
   .sh-price.is-deal b, .sh-price.is-deal small { color: #1A1408; }
 
-  .sh-hero h2 { margin: 27px 0 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 500; font-size: 25px; line-height: 1.2; }
+  .sh-hero h2 { margin: 22px 0 0; font-family: 'Fredoka', ui-rounded, system-ui, sans-serif; font-weight: 500; font-size: 25px; line-height: 1.2; }
   /* Scales with the screen so phones narrower than the mock keep its four lines. */
   .sh-acts { box-sizing: border-box; max-width: 402px; margin: 6px auto -6px; padding: 0 clamp(16px, 9.45vw, 38px); font-size: clamp(16px, 5.04vw, 20.25px); line-height: 30px; font-weight: 400; color: #FFF8EC; }
   .sh-acts em { font-style: normal; color: #FCD419; white-space: nowrap; }
 
   /* The illustration carries its own purple-to-night gradient; the same gradient fills the sides on wider phones. */
-  .sh-art { margin-top: auto; background: linear-gradient(180deg, #513295 0%, #513295 4%, #1A102F 61%, #1A102F 100%); }
+  .sh-art { margin-top: auto; padding-top: 12px; background: linear-gradient(180deg, #513295 0%, #513295 4%, #1A102F 61%, #1A102F 100%); }
   .sh-art img { display: block; width: 100%; max-width: 480px; height: auto; margin: 0 auto; }
 
   .sh-bar {

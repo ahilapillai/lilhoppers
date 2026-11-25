@@ -38,9 +38,9 @@ var CONFIG = {
 };
 
 var DEFAULT_SLOTS = [
-  { id: 'S1', label: 'Slot 1', time: '2:00 PM – 3:30 PM', capacity: 32 },
-  { id: 'S2', label: 'Slot 2', time: '4:00 PM – 5:30 PM', capacity: 33 },
-  { id: 'S3', label: 'Slot 3', time: '6:00 PM – 7:30 PM', capacity: 35 }
+  { id: 'S1', label: 'Slot 1', time: '2:00 PM – 3:30 PM', capacity: 40 },
+  { id: 'S2', label: 'Slot 2', time: '4:00 PM – 5:30 PM', capacity: 40 },
+  { id: 'S3', label: 'Slot 3', time: '6:00 PM – 7:30 PM', capacity: 40 }
 ];
 
 var STATUS = {

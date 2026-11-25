@@ -25,9 +25,9 @@ This version adds the final slot, add-on, payment and admin requirements to the 
 
 | Slot | Time | Maximum children |
 |---|---|---|
-| Slot 1 | 2:00 PM – 3:30 PM | 32 |
-| Slot 2 | 4:00 PM – 5:30 PM | 33 |
-| Slot 3 | 6:00 PM – 7:30 PM | 35 |
+| Slot 1 | 2:00 PM – 3:30 PM | 40 |
+| Slot 2 | 4:00 PM – 5:30 PM | 40 |
+| Slot 3 | 6:00 PM – 7:30 PM | 40 |
 | **Total** | | **100** |
 
 Rules:

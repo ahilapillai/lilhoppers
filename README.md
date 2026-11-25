@@ -27,7 +27,7 @@ Do every step signed in to Google as **hello.lilhoppers@gmail.com**. Emails are 
 3. **Add the manifest.** Click **Project Settings** (gear icon), tick **Show "appsscript.json" manifest file in editor**, go back to the editor, and replace that file's contents with `apps-script/appsscript.json`.
 4. **Run setup.** Click **Save**, choose **setup** in the function dropdown and click **Run**.
    - Allow the permissions it asks for. Google warns that the app isn't verified: click **Advanced → Go to (project name)**.
-   - `setup` creates the **Bookings** and **Slots** tabs (with capacities 32, 33 and 35), the Drive folder "Lil Hoppers – Payment screenshots", a 10-minute job that releases expired holds, and the **admin passcode**.
+   - `setup` creates the **Bookings** and **Slots** tabs (40 kids per slot), the Drive folder "Lil Hoppers – Payment screenshots", a 10-minute job that releases expired holds, and the **admin passcode**.
 5. **Note the passcode.** Open **Executions** (left bar) and click the latest `setup` run to see the admin passcode. You can change it any time under **Project Settings → Script properties → ADMIN_PASSCODE**.
 6. **Deploy.** Click **Deploy → New deployment**, choose **Web app**, set **Execute as: Me** and **Who has access: Anyone**, then click **Deploy**. Copy the **Web app URL** (it ends in `/exec`).
 7. **Connect the site.** Paste that URL into `assets/js/config.js` as `API_URL`, then commit. Demo mode switches off automatically.

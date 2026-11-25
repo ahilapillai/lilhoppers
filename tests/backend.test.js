@@ -129,11 +129,11 @@ test('price examples from the PRD', () => {
   assert.equal(ctx.computeAmounts(5, true, 5).total, 5 * 749 + 199 + 5 * 299 + 39);
 });
 
-test('setup creates slots 32 / 33 / 35 = 100 and an admin passcode', () => {
+test('setup creates three slots of 40 kids (120 in all) and an admin passcode', () => {
   const env = load();
   const caps = env.sheets.Slots.data.slice(1).map((r) => r[3]);
-  assert.deepEqual(caps, [32, 33, 35]);
-  assert.equal(caps.reduce((a, b) => a + b), 100);
+  assert.deepEqual(caps, [40, 40, 40]);
+  assert.equal(caps.reduce((a, b) => a + b), 120);
   assert.ok(env.props.ADMIN_PASSCODE && env.props.ADMIN_PASSCODE.length >= 8);
 });
 
@@ -169,29 +169,29 @@ test('selection rules: gift quantity up to the number of children, max one extra
   assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 2 }).ok, true);
 });
 
-test('capacity counts children: slot 1 takes exactly 32, then Sold Out', () => {
+test('capacity counts children: slot 1 takes exactly 40, then Sold Out', () => {
   const env = load();
   const results = [];
-  for (let i = 0; i < 40; i++) results.push(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }));
-  assert.equal(results.filter((r) => r.ok).length, 32);
-  assert.equal(results[32].code, 'SOLD_OUT');
+  for (let i = 0; i < 45; i++) results.push(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }));
+  assert.equal(results.filter((r) => r.ok).length, 40);
+  assert.equal(results[40].code, 'SOLD_OUT');
   assert.equal(env.call({ action: 'availability' }).slots.find((s) => s.id === 'S1').soldOut, true);
   assert.equal(env.call({ action: 'availability' }).slots.find((s) => s.id === 'S2').soldOut, false);
 });
 
 test('a booking larger than the places left is refused without revealing numbers', () => {
   const env = load();
-  for (let i = 0; i < 10; i++) env.call({ action: 'createHold', slotId: 'S2', children: 3, giftQty: 0 }); // 30 of 33
-  const res = env.call({ action: 'createHold', slotId: 'S2', children: 4, giftQty: 0 });
+  for (let i = 0; i < 12; i++) env.call({ action: 'createHold', slotId: 'S2', children: 3, giftQty: 0 }); // 36 of 40
+  const res = env.call({ action: 'createHold', slotId: 'S2', children: 5, giftQty: 0 });
   assert.equal(res.code, 'NOT_ENOUGH_PLACES');
-  assert.doesNotMatch(res.error, /\b3\b|\b33\b|left:/);
-  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 3, giftQty: 0 }).ok, true);
+  assert.doesNotMatch(res.error, /\b4\b|\b40\b|left:/);
+  assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 4, giftQty: 0 }).ok, true);
 });
 
 test('abandoned (expired hold) and rejected bookings free their places; pending and verified keep them', () => {
   const env = load();
   const holds = [];
-  for (let i = 0; i < 32; i++) holds.push(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }));
+  for (let i = 0; i < 40; i++) holds.push(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }));
   // 1: submitted (pending) 2: verified 3: rejected 4: hold expires
   env.call({ action: 'submitBooking', bookingId: holds[0].bookingId, ...details() });
   env.call({ action: 'submitBooking', bookingId: holds[1].bookingId, ...details() });
@@ -204,7 +204,7 @@ test('abandoned (expired hold) and rejected bookings free their places; pending 
 
   const list = env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE });
   const s1 = list.slots.find((s) => s.id === 'S1');
-  assert.deepEqual([s1.verified, s1.pending, s1.total], [1, 1, 30]);
+  assert.deepEqual([s1.verified, s1.pending, s1.total], [1, 1, 38]);
   assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 }).ok, true);
   assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
   assert.equal(bookingRow(env, holds[3].bookingId)['Status'], 'Abandoned');
@@ -342,7 +342,7 @@ test('expired hold + slot now full: the submission is kept as Rejected for a ref
   const mine = env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 });
   const sh = env.sheets.Bookings.data;
   sh.find((r) => r[0] === mine.bookingId)[sh[0].indexOf('Hold Expires At')] = new Date(Date.now() - 1000);
-  for (let i = 0; i < 31; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  for (let i = 0; i < 39; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
   const res = env.call({ action: 'submitBooking', bookingId: mine.bookingId, ...details(2) });
   assert.equal(res.code, 'FULL_AFTER_EXPIRY');
   const row = bookingRow(env, mine.bookingId);
@@ -376,7 +376,7 @@ test('admin can change capacity; lower than the count makes the slot sold out', 
   assert.equal(env.call({ action: 'availability' }).slots.find((s) => s.id === 'S3').soldOut, true);
   assert.equal(env.call({ action: 'adminUpdateCapacity', passcode: env.props.ADMIN_PASSCODE, slotId: 'S3', capacity: 40 }).ok, true);
   const list = env.call({ action: 'adminList', passcode: env.props.ADMIN_PASSCODE });
-  assert.equal(list.totals.capacity, 32 + 33 + 40);
+  assert.equal(list.totals.capacity, 40 + 40 + 40);
   assert.equal(env.call({ action: 'adminUpdateCapacity', passcode: env.props.ADMIN_PASSCODE, slotId: 'S3', capacity: -1 }).code, 'BAD_CAPACITY');
 });
 
@@ -416,7 +416,7 @@ test('bookings sheet has no Slot ID column; an older sheet loses it on setup and
   const env = load();
   assert.equal(env.sheets.Bookings.data[0].includes('Slot ID'), false);
   assert.equal(env.sheets.Bookings.data[0].includes('Slot Time'), true);
-  for (let i = 0; i < 33; i++) env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 });
+  for (let i = 0; i < 40; i++) env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 });
   assert.equal(env.call({ action: 'createHold', slotId: 'S2', children: 1, giftQty: 0 }).code, 'SOLD_OUT');
   assert.equal(env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 }).ok, true);
 
@@ -550,7 +550,7 @@ test('the automatic sold-out rejection does not send the "could not verify" emai
   const mine = env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 });
   const sh = env.sheets.Bookings.data;
   sh.find((r) => r[0] === mine.bookingId)[sh[0].indexOf('Hold Expires At')] = new Date(Date.now() - 1000);
-  for (let i = 0; i < 31; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  for (let i = 0; i < 39; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
   assert.equal(env.call({ action: 'submitBooking', bookingId: mine.bookingId, ...details(2) }).code, 'FULL_AFTER_EXPIRY');
   assert.equal(env.mails.filter((m) => /couldn't verify/.test(m.subject)).length, 0);
 });
@@ -702,7 +702,7 @@ test('a payment that arrives after the slot filled up sends a "refund needed" al
   const mine = env.call({ action: 'createHold', slotId: 'S1', children: 2, giftQty: 0 });
   const sh = env.sheets.Bookings.data;
   sh.find((r) => r[0] === mine.bookingId)[sh[0].indexOf('Hold Expires At')] = new Date(Date.now() - 1000);
-  for (let i = 0; i < 31; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
+  for (let i = 0; i < 39; i++) env.call({ action: 'createHold', slotId: 'S1', children: 1, giftQty: 0 });
   const res = env.call({ action: 'submitBooking', bookingId: mine.bookingId, ...details(2) });
   assert.equal(res.code, 'FULL_AFTER_EXPIRY');
   assert.equal(res.alertFor, undefined, 'booking details are not sent back to the page');

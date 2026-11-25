@@ -27,8 +27,8 @@ var CONFIG = {
   // BOOKING_FEE: the flat 'Booking & support fee' added once per booking. Keep in step with assets/js/config.js.
   // GROUP_DEALS: codes applied automatically by the number of children (the lowest price that applies wins).
   PRICES: {
-    CHILD_TICKET: 799, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
-    GROUP_DEALS: [{ code: 'LILHOP2', minChildren: 2, childPrice: 699 }]
+    CHILD_TICKET: 899, EXTRA_PARENT: 199, SANTA_GIFT: 299, BOOKING_FEE: 39,
+    GROUP_DEALS: [{ code: 'LILHOP5', minChildren: 5, childPrice: 749 }, { code: 'LILHOP2', minChildren: 2, childPrice: 799 }]
   },
   SCREENSHOT_FOLDER: 'Lil Hoppers – Payment screenshots',
   // The booking page reads each payment screenshot and only accepts it if it shows one of these names
@@ -66,7 +66,7 @@ var SLOT_HEADERS = ['Slot ID', 'Label', 'Time', 'Capacity'];
 /* Pure helpers (also unit-tested outside Apps Script)                 */
 /* ------------------------------------------------------------------ */
 
-/** The group deal for this many children (LILHOP2: ₹699 each from 2 kids), or null. */
+/** The group deal for this many children (LILHOP2 from 2, LILHOP5 from 5), or null. */
 function groupDeal_(children) {
   var best = null;
   (CONFIG.PRICES.GROUP_DEALS || []).forEach(function (d) {
